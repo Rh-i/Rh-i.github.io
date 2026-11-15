@@ -1,0 +1,52 @@
+{
+  "VsCodeTaskButtons.showCounter": true,
+  "VsCodeTaskButtons.tasks": [
+    {
+      "label": "$(play) 预览",
+      "task": "预览站点",
+      "tooltip": "启动本地预览 hexo server (localhost:4000)，改文件自动刷新",
+      "alignment": "left"
+    },
+    {
+      "label": "$(globe) 网站",
+      "alignment": "left",
+      "tooltip": "在浏览器打开本地预览或线上站点",
+      "tasks": [
+        {
+          "label": "本地 http://localhost:4000",
+          "task": "打开本地网站",
+          "description": "需先运行「预览站点」"
+        },
+        {
+          "label": "线上 https://rh-i.github.io",
+          "task": "打开线上站点",
+          "description": "看已部署的版本"
+        }
+      ]
+    },
+    {
+      "label": "$(tools) 构建",
+      "task": "本地构建",
+      "tooltip": "npx hexo generate，检查能否构建成功",
+      "alignment": "left"
+    },
+    {
+      "label": "$(edit) 新文章",
+      "task": "新建文章",
+      "tooltip": "在 source/_posts/ 生成一篇带 front-matter 的文章",
+      "alignment": "left"
+    },
+    {
+      "label": "$(cloud-upload) 发布",
+      "task": "发布上线",
+      "tooltip": "提交全部改动并推送到 main，Actions 自动部署",
+      "alignment": "right"
+    },
+    {
+      "label": "$(trash) 清理",
+      "task": "清理缓存",
+      "tooltip": "npx hexo clean",
+      "alignment": "right"
+    }
+  ]
+}

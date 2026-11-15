@@ -6,6 +6,12 @@
       "type": "promptString",
       "description": "文章标题（文件名也会用它，建议英文）",
       "default": "new-post"
+    },
+    {
+      "id": "commitMsg",
+      "type": "promptString",
+      "description": "提交信息（会提交全部改动并推送）",
+      "default": "post: 更新"
     }
   ],
   "tasks": [
@@ -54,6 +60,27 @@
       "detail": "npx hexo clean，改了配置或主题后先跑这个",
       "type": "shell",
       "command": "npx hexo clean",
+      "problemMatcher": []
+    },
+    {
+      "label": "打开本地网站",
+      "detail": "用浏览器打开 http://localhost:4000 （需先运行「预览站点」）",
+      "type": "shell",
+      "command": "xdg-open http://localhost:4000",
+      "problemMatcher": []
+    },
+    {
+      "label": "打开线上站点",
+      "detail": "用浏览器打开 https://rh-i.github.io",
+      "type": "shell",
+      "command": "xdg-open https://rh-i.github.io",
+      "problemMatcher": []
+    },
+    {
+      "label": "发布上线",
+      "detail": "git add -A + commit + push，推上去后 GitHub Actions 自动构建部署",
+      "type": "shell",
+      "command": "git add -A && git commit -m \"${input:commitMsg}\" && git push origin main",
       "problemMatcher": []
     }
   ]
