@@ -42,28 +42,19 @@ const css = `<style id="site-custom-style">
     }
 }
 
-/* 宽屏：侧边栏用固定窄宽度，卡片不会被拉宽；剩余宽度全给正文 */
+/* 宽屏：侧边栏固定 300px，卡片不会被拉宽；剩余宽度全给正文 */
 @media screen and (min-width: 1216px) {
     body.is-3-column .column-left,
     body.is-3-column .column-right {
-        flex: 0 0 220px;
-        width: 220px;
-        max-width: 220px;
+        flex: 0 0 300px;
+        width: 300px;
+        max-width: 300px;
     }
 
     body.is-3-column .column-main {
         flex: 1 1 auto;
         width: auto;
         max-width: none;
-    }
-}
-
-@media screen and (min-width: 1500px) {
-    body.is-3-column .column-left,
-    body.is-3-column .column-right {
-        flex: 0 0 260px;
-        width: 260px;
-        max-width: 260px;
     }
 }
 </style>`;
