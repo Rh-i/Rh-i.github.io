@@ -8,6 +8,8 @@ tags:
 categories:
   - 个人的一点小折腾
 ---
+> 关键字： Hexo Icarus GitHub Pages 博客搭建 GitHub Actions
+
 这是第一篇文章，记录一下这个博客是如何搭建起来的
 
 ## 1. 技术栈

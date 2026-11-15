@@ -112,6 +112,7 @@ navbar:
     # Navigation menu items
     menu:
         主页: /
+        搜索: /search
         归档: /archives
         分类: /categories
         标签: /tags
@@ -178,13 +179,32 @@ article:
 # Disabled: Icarus 7 only supports insight / baidu / google_cse / algolia (no local search).
 # Comment plugin configurations
 # https://ppoffice.github.io/hexo-theme-icarus/categories/Plugins/Comment/
-# Disabled.
+comment:
+    type: giscus
+    # GitHub 仓库与仓库 ID
+    repo: Rh-i/Rh-i.github.io
+    repoId: R_kgDOVvSNAg
+    # 讨论区分类（Announcements 类型）与分类 ID
+    category: Announcements
+    categoryId: DIC_kwDOVvSNAs4DLMKO
+    # 页面与 discussion 的映射方式，pathname 表示一个页面一个讨论
+    mapping: pathname
+    strict: true
+    reactionsEnabled: true
+    emitMetadata: false
+    inputPosition: top
+    theme: noborder_light
+    darkTheme: noborder_dark
+    lang: zh-CN
+    # 滚动到评论区附近才加载
+    lazy: true
 # Donate plugin configurations
 # https://ppoffice.github.io/hexo-theme-icarus/categories/Plugins/Donation/
 # Disabled.
 # Share plugin configurations
 # https://ppoffice.github.io/hexo-theme-icarus/categories/Plugins/Share/
-# Disabled.
+share:
+    type: addtoany
 # Sidebar configurations.
 # Please be noted that a sidebar is only visible when it has at least one widget
 sidebar:
@@ -317,7 +337,7 @@ plugins:
         tracking_id: 
     # BuSuanZi site/page view counter
     # https://busuanzi.ibruce.info
-    busuanzi: false
+    busuanzi: true
     # CNZZ statistics
     # https://www.umeng.com/web
     cnzz:
@@ -341,7 +361,7 @@ plugins:
         site_id: 
     # Enable the KaTeX math typesetting support
     # https://katex.org/
-    katex: false
+    katex: true
     # Enable MathJax math typesetting
     # https://www.mathjax.org/
     mathjax: false
@@ -359,7 +379,7 @@ plugins:
     # Enable PJAX
     pjax: true
     # Prefetch the pages of the site that the visitor hovers over or touches the links to, so that they open faster. Not when the visitor has asked to save data
-    prefetch: false
+    prefetch: true
     # Show a progress bar at top of the page on page loading
     progressbar: true
     # Statcounter statistics
