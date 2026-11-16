@@ -13,7 +13,7 @@
  * 做法：
  *   1. 正文进入视口（滚过标题区）时给 body 加 .is-reading
  *   2. 文章顶部：左栏只留 简介 / 本文分类 / 本文标签，目录不显示；
- *      进入阅读态：左栏换成 按钮 / 目录 / 本文分类 / 本文标签（顺序固定）
+ *      进入阅读态：左栏换成 目录 / 按钮 / 本文分类 / 本文标签（顺序固定）
  *   3. 目录卡片自己有 max-height + overflow，长目录在卡片内部滚动；
  *      主题的 main.js 会把高亮项滚到卡片中间（它找的就是这个可滚动容器）
  *
@@ -77,16 +77,17 @@ body .column-left > .toc-meta-toggle {
         outline: none;
     }
 
-    /* 按钮贴着目录卡片，不跟其余卡片抢那个 42px */
+    /* 按钮紧贴在目录卡片下方，分类标签展开时排在按钮下面 */
     body.is-reading .column-left > .toc-meta-toggle {
-        order: 1;
-    }
-
-    /* 阅读态左栏顺序固定为：按钮 → 目录 → 本文分类 → 本文标签。
-       用 order 而不是挪 DOM：pjax / 折叠侧栏搬卡片之后位置也不会乱 */
-    body.is-reading .column-left > .widget[data-type="toc"] {
         order: 2;
         margin-top: .75rem;
+    }
+
+    /* 阅读态左栏顺序固定为：目录 → 按钮 → 本文分类 → 本文标签。
+       用 order 而不是挪 DOM：pjax / 折叠侧栏搬卡片之后位置也不会乱 */
+    body.is-reading .column-left > .widget[data-type="toc"] {
+        order: 1;
+        margin-top: 0;
     }
 
     body.is-reading .column-left > .post-meta-widget {
@@ -348,8 +349,8 @@ const script = `<script id="site-reading-toc-script">
         return true;
     }
 
-    /* 页面顶部放一个收起 / 展开「分类与标签」的按钮：
-       阅读时左栏只留目录，需要看分类/标签就点一下上面那颗 */
+    /* 页面底部放一个收起 / 展开「分类与标签」的按钮：
+       阅读时左栏只留目录，需要看分类/标签就点一下下面那颗 */
     var META_STATE = 'blog.left.meta.state.v2';
 
     function readMeta() {
