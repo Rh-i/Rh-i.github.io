@@ -75,10 +75,23 @@ const script = `<script id="site-post-sidebar">
         return card;
     }
 
-    ready(function () {
+    function inject() {
         var left = document.querySelector('.column-left');
         var main = document.querySelector('.column-main');
         if (!left || !main) {
+            return;
+        }
+
+        // Pjax 切换后左栏可能被整体替换；若只是局部更新，先清掉上次注入的卡片
+        Array.prototype.forEach.call(
+            left.querySelectorAll('.post-meta-widget'),
+            function (el) { el.parentNode.removeChild(el); }
+        );
+
+        // 只有单篇内容（文章页 / 独立页面）才谈得上"本文"。
+        // 列表页（首页、归档、分类、标签）里的 .article 没有 h1，标题是 h2 或链接
+        var articles = main.querySelectorAll('.article');
+        if (articles.length !== 1 || !articles[0].querySelector('h1')) {
             return;
         }
 
@@ -105,11 +118,27 @@ const script = `<script id="site-post-sidebar">
                 left.appendChild(node);
             }
         });
-    });
+    }
+
+    function boot() {
+        inject();
+        // 主题用 Pjax 无刷新切换，切回文章页时左栏是新 DOM，需要重新注入。
+        // 稍有延迟，等 Pjax 把左栏和正文都换完再判断
+        document.addEventListener('pjax:complete', function () {
+            setTimeout(inject, 50);
+        });
+    }
+
+    ready(boot);
 })();
 </script>`;
 
-// 只注入到文章页：首页/归档等的列表卡片里也有 .article-meta，
-// 若用 'default' 会在这些页面抓错数据
-hexo.extend.injector.register('head_end', style, 'post');
-hexo.extend.injector.register('body_end', script, 'post');
+// 样式和脚本都注入到所有页面：
+//   只在文章页注册 'post' 的话，如果访客第一次打开的是首页/关于页，
+//   脚本根本不会加载，之后 Pjax 切到文章页就什么都不出现。
+//   改成全站注入，由下面的 inject() 在运行时判断当前页面该不该有内容：
+//     文章页 → 本文分类 + 本文标签
+//     关于页 → 只有主题渲染的目录
+//     其他页 → 什么都不注入
+hexo.extend.injector.register('head_end', style, 'default');
+hexo.extend.injector.register('body_end', script, 'default');

@@ -28,12 +28,21 @@ const style = `<style id="site-sidebar-toggle-style">
     display: none;
     align-items: center;
     justify-content: center;
-    opacity: .45;
-    transition: opacity .15s, background-color .15s;
+    opacity: .7;
+    transition: opacity .15s, background-color .15s, color .15s;
 }
 .sb-toggle:hover {
     opacity: 1;
     background: rgba(128, 128, 128, .22);
+}
+
+/* 对应侧栏被折叠时高亮，避免“侧栏怎么不见了” */
+body.sb-left-hidden #sb-toggle-left,
+body.sb-right-hidden #sb-toggle-right {
+    opacity: 1;
+    color: #3273dc;
+    border-color: rgba(50, 115, 220, .55);
+    background: rgba(50, 115, 220, .16);
 }
 .sb-toggle-left {
     left: 0;
@@ -142,12 +151,30 @@ const script = `<script id="site-sidebar-toggle">
         return button;
     }
 
-    function init() {
+    // 按钮只在第一次遇到"有侧栏的页面"时创建。
+    // 不能放进 init 里一次性判断：若访客第一次打开的是没有侧栏的页面，
+    // 之后 Pjax 切到文章页，按钮就永远不会出现了
+    function ensureButtons() {
         if (!document.querySelector('.column-left') && !document.querySelector('.column-right')) {
             return;
         }
-        document.body.appendChild(makeButton('left'));
-        document.body.appendChild(makeButton('right'));
+        if (!document.getElementById('sb-toggle-left')) {
+            document.body.appendChild(makeButton('left'));
+        }
+        if (!document.getElementById('sb-toggle-right')) {
+            document.body.appendChild(makeButton('right'));
+        }
+    }
+
+    function init() {
+        // Pjax 切换后侧栏内容变了，按钮可能还没建，显隐和标题也要重新同步
+        document.addEventListener('pjax:complete', function () {
+            ensureButtons();
+            apply();
+            syncVisibility();
+        });
+
+        ensureButtons();
         apply();
         syncVisibility();
 
