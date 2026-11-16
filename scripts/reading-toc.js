@@ -93,9 +93,11 @@ const style = `<style id="site-reading-toc">
         display: flex;
         flex-direction: column;
         /* 必须给确定高度：只写 max-height 时容器高度跟着内容走，
-           flex: 1 没有剩余空间可分，目录就撑不满整栏 */
-        height: calc(100vh - 7.5rem);
-        max-height: calc(100vh - 7.5rem);
+           flex: 1 没有剩余空间可分，目录就撑不满整栏。
+           100vh - 6.5rem(吸附点) - 2.25rem(底部留白) —— 上下两边留白一样，
+           不会出现“侧栏顶着屏幕底、另一侧留一大块” */
+        height: calc(100vh - 8.75rem);
+        max-height: calc(100vh - 8.75rem);
     }
 
     body.is-reading .column-left > .widget:not([data-type="toc"]) {
@@ -120,6 +122,15 @@ const style = `<style id="site-reading-toc">
     body.is-reading .column-left > [data-sb-moved],
     body.is-reading .column-left > .column-right-shadow {
         display: none !important;
+    }
+
+    /* 右侧栏卡片多的时候比视口还高，粘住后底部永远看不见；
+       限高并在栏内滚动，上下留白就跟左侧一致了 */
+    body .column-right.is-sticky {
+        max-height: calc(100vh - 8.75rem);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
     }
 
     /* 目录内部不要任何过渡：切换高亮时主题会给 <ul> 加类名，
