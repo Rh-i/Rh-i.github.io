@@ -27,9 +27,9 @@ html {
     scrollbar-gutter: stable;
 }
 
-/* 「收起 / 展开分类标签」按钮只在桌面档的阅读态出现：
-   手机上目录是浮层，这个按钮用不上 */
-body .column-left > .toc-meta-toggle {
+/* 目录下方那排小按钮（目录全部展开/收起、分类标签收起/展开）
+   只在桌面档的阅读态出现：手机上目录是浮层，用不上 */
+body .column-left > .toc-tools {
     display: none;
 }
 
@@ -47,16 +47,16 @@ body .column-left > .toc-meta-toggle {
         height: 0;
     }
 
-    /* 左栏顶部的小按钮：收起 / 展开「本文分类」「本文标签」。
-       它排在简介之后、分类标签之前（见 ensureMetaToggle），
-       阅读态简介被藏起来，它就落在左栏最上面 —— 展开和收缩都在上面点 */
-    body .column-left > .toc-meta-toggle {
-        flex: 0 0 auto;
+    /* 目录卡片下面那排小按钮（见 ensureTools）：
+       左：目录全部展开 / 全部收起；右：分类标签收起 / 展开 */
+    body .column-left > .toc-tools > button {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
         align-items: center;
         justify-content: center;
-        gap: .35em;
-        width: 100%;
-        padding: .45rem .6rem;
+        gap: .3em;
+        padding: .45rem .5rem;
         border: 1px solid rgba(128, 128, 128, .28);
         border-radius: 999px;
         background: transparent;
@@ -64,24 +64,28 @@ body .column-left > .toc-meta-toggle {
         font: inherit;
         font-size: .8rem;
         line-height: 1.2;
+        white-space: nowrap;
         opacity: .72;
         cursor: pointer;
     }
 
-    body.is-reading .column-left > .toc-meta-toggle {
-        display: flex;
-    }
-
-    body .column-left > .toc-meta-toggle:hover,
-    body .column-left > .toc-meta-toggle:focus-visible {
+    body .column-left > .toc-tools > button:hover,
+    body .column-left > .toc-tools > button:focus-visible {
         opacity: 1;
         outline: none;
     }
 
-    /* 按钮紧贴在目录卡片下方，分类标签展开时排在按钮下面 */
-    body.is-reading .column-left > .toc-meta-toggle {
+    /* 按钮排紧贴在目录卡片下方 */
+    body.is-reading .column-left > .toc-tools {
         order: 2;
         margin-top: .75rem;
+        display: flex;
+        gap: .5rem;
+    }
+
+    /* 目录只留一级：把嵌套的 .menu-list 全收起来 */
+    #toc.toc-flat .menu-list .menu-list {
+        display: none;
     }
 
     /* 阅读态左栏顺序固定为：目录 → 按钮 → 本文分类 → 本文标签。
@@ -495,9 +499,10 @@ const script = `<script id="site-reading-toc-script">
         return true;
     }
 
-    /* 页面底部放一个收起 / 展开「分类与标签」的按钮：
-       阅读时左栏只留目录，需要看分类/标签就点一下下面那颗 */
+    /* 目录卡片下面那排按钮：
+       左：目录全部展开 / 全部收起；右：本文分类 / 本文标签收起 / 展开 */
     var META_STATE = 'blog.left.meta.state.v2';
+    var TOC_STATE = 'blog.toc.state';
 
     function readMeta() {
         try {
@@ -534,45 +539,101 @@ const script = `<script id="site-reading-toc-script">
         button.setAttribute('aria-expanded', hidden ? 'false' : 'true');
     }
 
-    function ensureMetaToggle() {
+    /* ── 目录层级：全部展开 / 全部收起 ─────────────────────
+       收起时只留一级标题（CSS 里 #toc.toc-flat 把嵌套的 .menu-list 藏掉），
+       默认展开，选过的记在 localStorage */
+    function tocFlat() {
+        var toc = document.getElementById('toc');
+        return !!toc && toc.classList.contains('toc-flat');
+    }
+
+    function syncLevelButton(button) {
+        var flat = tocFlat();
+        if (button) {
+            button.textContent = flat ? '目录全部展开 ▼' : '目录全部收起 ▲';
+            button.setAttribute('aria-expanded', flat ? 'false' : 'true');
+        }
+    }
+
+    function setTocFlat(flat) {
+        var toc = document.getElementById('toc');
+        if (!toc) {
+            return;
+        }
+        toc.classList.toggle('toc-flat', flat);
+        syncLevelButton(document.querySelector('.toc-level-toggle'));
+    }
+
+    function readTocState() {
+        try {
+            return window.localStorage.getItem(TOC_STATE);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function saveTocState(flat) {
+        try {
+            window.localStorage.setItem(TOC_STATE, flat ? 'flat' : 'full');
+        } catch (e) {
+            /* 隐私模式忽略 */
+        }
+    }
+
+    function ensureTools() {
         var left = document.querySelector('.column-left');
         if (!left) {
             return;
         }
 
-        var existing = null;
+        var tools = null;
         for (var i = 0; i < left.children.length; i++) {
-            if (left.children[i].classList.contains('toc-meta-toggle')) {
-                existing = left.children[i];
+            if (left.children[i].classList.contains('toc-tools')) {
+                tools = left.children[i];
                 break;
             }
         }
-        if (existing) {
-            syncMetaButton(existing);
-            return;
+
+        if (!tools) {
+            tools = document.createElement('div');
+            tools.className = 'toc-tools';
+
+            var level = document.createElement('button');
+            level.type = 'button';
+            level.className = 'toc-level-toggle';
+            level.addEventListener('click', function (event) {
+                event.preventDefault();
+                var flat = !tocFlat();
+                setTocFlat(flat);
+                saveTocState(flat);
+            });
+
+            var meta = document.createElement('button');
+            meta.type = 'button';
+            meta.className = 'toc-meta-toggle';
+            meta.addEventListener('click', function (event) {
+                event.preventDefault();
+
+                var hidden = !metaHidden();
+                setMeta(hidden);
+                saveMeta(hidden ? 'hidden' : 'shown');
+            });
+
+            tools.appendChild(level);
+            tools.appendChild(meta);
+
+            /* 插在「简介」之后：阅读态简介被藏起来，这排按钮就落在左栏最上面，
+               目录始终排在它们下面 */
+            var profile = left.querySelector('[data-type="profile"]');
+            if (profile && profile.parentElement === left) {
+                left.insertBefore(tools, profile.nextSibling);
+            } else {
+                left.insertBefore(tools, left.firstChild);
+            }
         }
 
-        var button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'toc-meta-toggle';
-        button.addEventListener('click', function (event) {
-            event.preventDefault();
-
-            var hidden = !metaHidden();
-            setMeta(hidden);
-            saveMeta(hidden ? 'hidden' : 'shown');
-        });
-
-        /* 插在「简介」之后、分类/标签之前：
-           阅读态简介被藏起来，按钮就落在左栏最上面，
-           展开 / 收缩都在上面点，目录始终排在分类标签的下面 */
-        var profile = left.querySelector('[data-type="profile"]');
-        if (profile && profile.parentElement === left) {
-            left.insertBefore(button, profile.nextSibling);
-        } else {
-            left.insertBefore(button, left.firstChild);
-        }
-        syncMetaButton(button);
+        syncLevelButton(tools.querySelector('.toc-level-toggle'));
+        syncMetaButton(tools.querySelector('.toc-meta-toggle'));
     }
 
     document.addEventListener('click', function (event) {
@@ -601,7 +662,8 @@ const script = `<script id="site-reading-toc-script">
         markTocPage();
         /* 默认展开：只有用户亲手点过「收起」才收 */
         setMeta(readMeta() === 'hidden');
-        ensureMetaToggle();
+        setTocFlat(readTocState() === 'flat');
+        ensureTools();
         refresh();
     }
 
