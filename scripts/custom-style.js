@@ -57,6 +57,30 @@ const css = `<style id="site-custom-style">
         max-width: none;
     }
 }
+
+/* 右侧「标签」卡片的标签底色：主题默认用 Bulma 的链接色（一块亮蓝），
+   和左侧「本文分类 / 本文标签」不统一。这里换成半透明灰，随主题明暗自动适配 */
+.widget[data-type="tags"] .tags.has-addons {
+    /* 先让这个链接继承正文色，否则下面 .tag 的 inherit 会拿到链接蓝 */
+    color: inherit;
+    font-weight: normal;
+}
+
+.widget[data-type="tags"] .tags.has-addons .tag {
+    background: rgba(128, 128, 128, .16);
+    color: inherit;
+    border: none;
+}
+
+/* 后面那个数字徽章稍微深一点，形成层次 */
+.widget[data-type="tags"] .tags.has-addons .tag:last-child {
+    background: rgba(128, 128, 128, .3);
+    color: inherit;
+}
+
+.widget[data-type="tags"] .tags.has-addons:hover .tag {
+    background: rgba(128, 128, 128, .34);
+}
 </style>`;
 
 hexo.extend.injector.register('head_end', css, 'default');

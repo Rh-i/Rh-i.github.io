@@ -6,7 +6,7 @@
 title: Rh-i 的博客
 subtitle: '嵌入式 · Linux · 折腾记录'
 description: '嵌入式 C++ / FreeRTOS / Linux 驱动 / 工具链折腾'
-keywords: '嵌入式,FreeRTOS,STM32,Linux,C++,博客'
+keywords: '嵌入式,FreeRTOS,STM32,MSPM0,电赛,Linux,C++,博客'
 author: Rh-i
 language: zh-CN
 timezone: 'Asia/Shanghai'
