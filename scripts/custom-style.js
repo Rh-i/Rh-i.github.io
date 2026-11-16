@@ -148,14 +148,14 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > blockq
 }
 
 /* 标题提到最前。主题把元信息放在标题前面，小字压在 28px 标题上方很别扭；
-   卡片内容改成纵向 flex 后，只给 h1 一个负 order，其余子元素顺序不变。
-   用 :has 限定「含 h1 的卡片」，首页列表页（标题是 h2）不受影响 */
-.article.card-content:has(> h1) {
+   卡片内容改成纵向 flex 后，只给标题一个负 order，其余子元素顺序不变。
+   文章页标题是 h1，首页列表页是 p.title，两种都要匹配 */
+.article.card-content:has(> :is(h1, .title)) {
     display: flex;
     flex-direction: column;
 }
 
-.article.card-content:has(> h1) > h1 {
+.article.card-content > :is(h1, .title) {
     order: -1;
 }
 
@@ -184,7 +184,7 @@ body .article-meta.level {
 }
 
 /* 正文第一个引用块（关键字）—— 和元信息条共用同一套数值 */
-.article.card-content:has(> h1) > .content > blockquote:first-child {
+.article.card-content:has(> :is(h1, .title)) > .content > blockquote:first-child {
     margin: 0 0 20px;
     padding: 0 .875rem .4rem;
     border-left: 4px solid rgba(128, 128, 128, .3);
@@ -195,10 +195,46 @@ body .article-meta.level {
     line-height: 1.5;
 }
 
-.article.card-content:has(> h1) > .content > blockquote:first-child > p {
+.article.card-content:has(> :is(h1, .title)) > .content > blockquote:first-child > p {
     margin: 0;
     font-size: inherit;
     line-height: inherit;
+}
+
+/* ══ 顶部导航栏常驻 ══════════════════════════════════════════
+   主题默认是 position: relative，往下滚就滚出视口了。
+   改 sticky 后一直停在顶部；侧栏的 is-sticky 是 z-index: 99，
+   导航栏必须再高一层，否则左栏会盖住 logo 和前面的菜单 */
+body > .navbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+/* 侧栏吸附点往下让出导航栏高度，不然展开时顶部内容会被导航栏遮住 */
+body .column-left.is-sticky,
+body .column-right.is-sticky {
+    top: 4.75rem;
+}
+
+@media screen and (max-width: 1023px) {
+    body .column-left.is-sticky,
+    body .column-right.is-sticky {
+        top: 8.5rem;
+    }
+}
+
+/* 导航栏盖住锚点位置，跳转后标题会被遮住一半，给标题留出导航栏的高度。
+   主题的样式表从 CDN 加载（跨域读不到规则），它的 scroll-margin 会盖过这里，所以要 !important */
+.column-main .content :is(h1, h2, h3, h4, h5, h6) {
+    scroll-margin-top: 4.6rem !important;
+}
+
+/* 窄屏导航栏是两行（logo + 菜单），比桌面高一倍 */
+@media screen and (max-width: 1023px) {
+    .column-main .content :is(h1, h2, h3, h4, h5, h6) {
+        scroll-margin-top: 8.4rem !important;
+    }
 }
 
 /* TOC 卡片标题：主题语言包里写的是「目录」，和左栏的
