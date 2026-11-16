@@ -5,6 +5,8 @@ db.json
 node_modules/
 public/
 .deploy*/
+# 本地草稿：只在自己电脑上预览，永远不提交、不部署
+source/_drafts/
 _multiconfig.yml
 _config.icarus.yml.*
 .obsidian/
