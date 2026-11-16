@@ -12,7 +12,8 @@
  *
  * 做法：
  *   1. 正文进入视口（滚过标题区）时给 body 加 .is-reading
- *   2. CSS 里 .is-reading 时把 profile 卡片折叠掉，并把目录排到左栏最前面
+ *   2. CSS 里 .is-reading 时把 profile 卡片折叠掉，左栏只留
+ *      「按钮 + 本文分类 + 本文标签 + 本文目录」（顺序不变，目录始终最底）
  *   3. 目录卡片自己有 max-height + overflow，长目录在卡片内部滚动；
  *      主题的 main.js 会把高亮项滚到卡片中间（它找的就是这个可滚动容器）
  *
@@ -20,6 +21,12 @@
  */
 
 const style = `<style id="site-reading-toc">
+/* 「收起 / 展开分类标签」按钮只在桌面档的阅读态出现：
+   手机上目录是浮层，这个按钮用不上 */
+body .column-left > .toc-meta-toggle {
+    display: none;
+}
+
 @media screen and (min-width: 769px) {
     /* 目录卡片内容统一限高，长目录在卡片里自己滚 */
     body .column-left > .widget[data-type="toc"] .card-content {
@@ -39,50 +46,47 @@ const style = `<style id="site-reading-toc">
         border-radius: 3px;
     }
 
-    /* 目录卡片底部的小按钮：展开 / 收缩「本文分类」「本文标签」 */
-    body .column-left > .widget[data-type="toc"] > .toc-meta-toggle {
-        display: block;
+    /* 左栏顶部的小按钮：收起 / 展开「本文分类」「本文标签」。
+       它排在简介之后、分类标签之前（见 ensureMetaToggle），
+       阅读态简介被藏起来，它就落在左栏最上面 —— 展开和收缩都在上面点 */
+    body .column-left > .toc-meta-toggle {
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        gap: .35em;
         width: 100%;
-        padding: .45rem .5rem;
-        border: none;
-        border-top: 1px solid rgba(128, 128, 128, .16);
+        padding: .45rem .6rem;
+        border: 1px solid rgba(128, 128, 128, .28);
+        border-radius: 999px;
         background: transparent;
         color: inherit;
         font: inherit;
         font-size: .8rem;
         line-height: 1.2;
-        text-align: center;
-        opacity: .7;
+        opacity: .72;
         cursor: pointer;
     }
 
-    body.is-reading .column-left > .widget[data-type="toc"] > .toc-meta-toggle {
-        display: block;
+    body.is-reading .column-left > .toc-meta-toggle {
+        display: flex;
     }
 
-    body .column-left > .widget[data-type="toc"] > .toc-meta-toggle:hover,
-    body .column-left > .widget[data-type="toc"] > .toc-meta-toggle:focus-visible {
+    body .column-left > .toc-meta-toggle:hover,
+    body .column-left > .toc-meta-toggle:focus-visible {
         opacity: 1;
         outline: none;
     }
 
-    /* 手机上的目录浮层里用不着这个按钮 */
-    #toc.is-active > .toc-meta-toggle {
-        display: none !important;
+    /* 按钮后面紧跟着分类标签卡片，那张卡片不要再空出 42px，否则按钮像飘着 */
+    body.is-reading .column-left > .toc-meta-toggle + .widget {
+        margin-top: 0;
     }
 
-    /* 阅读态默认只给目录：「本文分类」「本文标签」收起来，占的高度让给目录 */
-    body.is-reading .column-left > .post-meta-widget {
+    /* 「本文分类」「本文标签」永远排在目录上面，不参与排序。
+       默认展开，只有阅读态里点了按钮才收起 —— 收起不能跨到页面顶部生效：
+       按钮只在阅读态出现，顶部如果把卡片藏了，就再也点不回来了 */
+    body.is-reading.meta-hidden .column-left > .post-meta-widget {
         display: none;
-    }
-
-    /* 用户点了目录底部那个按钮，两种状态下都以按钮的选择为准 */
-    body.meta-hidden .column-left > .post-meta-widget {
-        display: none;
-    }
-
-    body.meta-shown .column-left > .post-meta-widget {
-        display: block;
     }
 
     /* ── 阅读态：左栏压进一屏，只给目录和那个按钮 ────────────
@@ -135,15 +139,15 @@ const style = `<style id="site-reading-toc">
         scrollbar-width: thin;
     }
 
-    /* 中间正文卡片和左右一样处理：固定高度、在卡片内部滚动，
-       上边距 42px、下边距 42px，三张卡片的顶边、底边全部对齐 */
+    /* 中间只留正文卡片一张：正文跟着页面滚。
+       之前把 .column-main > .card 全部设成「固定高度 + 卡片内滚动」，
+       评论那张卡片也吃了同一套规则，两张 sticky 卡片互相让位、
+       内部滚动又链不到页面，评论就永远够不着 —— 这里不再碰它 */
     body.is-reading .column-main > .card {
-        position: sticky;
-        top: 6.5rem;
-        height: calc(100vh - 8.75rem);
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        scrollbar-width: thin;
+        position: static;
+        height: auto;
+        max-height: none;
+        overflow: visible;
     }
 
     /* 目录内部不要任何过渡：切换高亮时主题会给 <ul> 加类名，
@@ -160,16 +164,9 @@ const style = `<style id="site-reading-toc">
         flex: 0 0 auto;
     }
 
-    /* 阅读态：简介卡片直接收起，目录顶到最上面（不做过渡） */
+    /* 阅读态：简介卡片直接收起，让最上面空出来放按钮和分类/标签 */
     body.is-reading .column-left > .widget[data-type="profile"] {
         display: none;
-    }
-
-    body.is-reading .column-left > .widget[data-type="toc"] {
-        order: -1;
-        /* 变成第一张卡片后，卡片之间的那个上间距要抵消，
-           否则目录卡片会比正文卡片低，看着“间距不对” */
-        margin-top: 0;
     }
 }
 </style>`;
@@ -189,11 +186,7 @@ const script = `<script id="site-reading-toc-script">
         line = Math.max(160, top - 96);
     }
 
-    /* 阅读态下正文卡片自己滚动，页面本身几乎不再滚动 */
-    function box() {
-        return document.querySelector('.column-main > .card');
-    }
-
+    /* 进 / 出各用一个阈值：在临界点上下小幅滚动时不会来回切布局 */
     function apply() {
         /* 没有目录的页面（首页 / 归档 / 标签…）不进入阅读态 */
         if (!document.getElementById('toc')) {
@@ -204,41 +197,15 @@ const script = `<script id="site-reading-toc-script">
         }
 
         var reading = body.classList.contains('is-reading');
-        var scroller = box();
-        var inner = scroller ? scroller.scrollTop : 0;
-        var pageAtTop = window.pageYOffset <= line;
-
-        /* 已经进入阅读态时，必须「卡片里也回到顶部、页面也在顶部」才退出，
-           否则一进一出会来回抖（进阅读态后页面高度变短，scrollY 自然回到 0） */
         var want = reading
-            ? !(inner <= 0 && pageAtTop)
+            ? window.pageYOffset > line - 48
             : window.pageYOffset > line;
 
         if (want === reading) {
             return;
         }
 
-        if (want) {
-            /* 先把原来的滚动量记下来，切完布局再转移到卡片内部 */
-            var offset = window.pageYOffset - line;
-            body.classList.add('is-reading');
-            if (readMeta() === null) {
-                setMeta(true);
-            }
-            var target = box();
-            if (target) {
-                window.scrollTo(0, 0);
-                target.scrollTop = offset > 0 ? offset : 0;
-            }
-            return;
-        }
-
-        var back = scroller ? scroller.scrollTop : 0;
-        body.classList.remove('is-reading');
-        if (readMeta() === null) {
-            setMeta(false);
-        }
-        window.scrollTo(0, line + back);
+        body.classList.toggle('is-reading', want);
     }
 
     function refresh() {
@@ -364,9 +331,9 @@ const script = `<script id="site-reading-toc-script">
         return true;
     }
 
-    /* 目录卡片底部放一个展开 / 收缩「分类与标签」的按钮：
-       阅读时左栏只留目录，需要看分类/标签时点一下 */
-    var META_STATE = 'blog.left.meta.state';
+    /* 页面顶部放一个收起 / 展开「分类与标签」的按钮：
+       阅读时左栏只留目录，需要看分类/标签就点一下上面那颗 */
+    var META_STATE = 'blog.left.meta.state.v2';
 
     function readMeta() {
         try {
@@ -399,13 +366,25 @@ const script = `<script id="site-reading-toc-script">
 
     function syncMetaButton(button) {
         var hidden = metaHidden();
-        button.textContent = hidden ? '展开分类标签' : '收缩分类标签';
+        button.textContent = hidden ? '展开分类标签 ▼' : '收起分类标签 ▲';
         button.setAttribute('aria-expanded', hidden ? 'false' : 'true');
     }
 
     function ensureMetaToggle() {
-        var tocCard = document.getElementById('toc');
-        if (!tocCard || tocCard.querySelector('.toc-meta-toggle')) {
+        var left = document.querySelector('.column-left');
+        if (!left) {
+            return;
+        }
+
+        var existing = null;
+        for (var i = 0; i < left.children.length; i++) {
+            if (left.children[i].classList.contains('toc-meta-toggle')) {
+                existing = left.children[i];
+                break;
+            }
+        }
+        if (existing) {
+            syncMetaButton(existing);
             return;
         }
 
@@ -413,19 +392,22 @@ const script = `<script id="site-reading-toc-script">
         button.type = 'button';
         button.className = 'toc-meta-toggle';
         button.addEventListener('click', function (event) {
-            /* 这个按钮长在 #toc 卡片里，主题给卡片绑了 toggleToc（手机浮层开关）。
-               不拦下冒泡的话，点一次目录卡片就变成浮层 + 蒙层，
-               之后按钮就点不到了 —— 表现就是“只能展开一次，再也不能收缩” */
             event.preventDefault();
-            event.stopPropagation();
 
             var hidden = !metaHidden();
             setMeta(hidden);
             saveMeta(hidden ? 'hidden' : 'shown');
-            syncMetaButton(button);
         });
 
-        tocCard.appendChild(button);
+        /* 插在「简介」之后、分类/标签之前：
+           阅读态简介被藏起来，按钮就落在左栏最上面，
+           展开 / 收缩都在上面点，目录始终排在分类标签的下面 */
+        var profile = left.querySelector('[data-type="profile"]');
+        if (profile && profile.parentElement === left) {
+            left.insertBefore(button, profile.nextSibling);
+        } else {
+            left.insertBefore(button, left.firstChild);
+        }
         syncMetaButton(button);
     }
 
@@ -447,16 +429,13 @@ const script = `<script id="site-reading-toc-script">
         window.addEventListener(type, unlock, { passive: true });
     });
 
-    /* scroll 不冒泡，但捕获阶段能收到：这样窗口和「正文卡片内部」的滚动都算 */
+    /* scroll 不冒泡，但捕获阶段能收到 */
     document.addEventListener('scroll', apply, { capture: true, passive: true });
     window.addEventListener('resize', refresh);
 
     function init() {
-        /* 记过选择就按记的来；否则顶部全显示，进入阅读态时再收起分类/标签 */
-        var saved = readMeta();
-        if (saved === 'hidden' || saved === 'shown') {
-            setMeta(saved === 'hidden');
-        }
+        /* 默认展开：只有用户亲手点过「收起」才收 */
+        setMeta(readMeta() === 'hidden');
         ensureMetaToggle();
         refresh();
     }
