@@ -1,6 +1,6 @@
 ---
 title: STM32 —— CMSIS_OS2（三）内存、中断与性能
-date: 2026-11-16 22:00:00
+date: 2026-11-16 23:50:00
 tags: [STM32, FreeRTOS, CMSIS-RTOS2, 嵌入式]
 categories: [嵌入式学习]
 ---
@@ -213,7 +213,7 @@ FreeRTOS 是一个很完善很稳定的操作系统，当然也给我们**提供
 ```
 
 ```c
- uint8_t CPU_RunInfo[400];     
+ uint8_t CPU_RunInfo[400];   
  //保存任务运行时间信息
 
  void CPU_Task(void *argument)

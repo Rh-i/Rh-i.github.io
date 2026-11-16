@@ -1,6 +1,6 @@
 ---
 title: STM32 —— CMSIS_OS2（一）运行机制与任务
-date: 2026-11-16 21:00:00
+date: 2026-11-16 23:30:00
 tags: [STM32, FreeRTOS, CMSIS-RTOS2, 嵌入式]
 categories: [嵌入式学习]
 ---

@@ -1,6 +1,6 @@
 ---
 title: STM32 —— CMSIS_OS2（二）任务间通信
-date: 2026-11-16 21:30:00
+date: 2026-11-16 23:40:00
 tags: [STM32, FreeRTOS, CMSIS-RTOS2, 嵌入式]
 categories: [嵌入式学习]
 ---
