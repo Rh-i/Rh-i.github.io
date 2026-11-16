@@ -323,11 +323,13 @@ body > .navbar.is-collapsed .navbar-start {
 
 body > .navbar.is-collapsed .navbar-start > .navbar-item {
     width: 100%;
-    justify-content: flex-start;
+    /* 窄屏下拉里文字居中，整行区域照样可点 */
+    justify-content: center;
     padding: .6rem .875rem;
     border-radius: 8px;
     font-size: .95rem;
     line-height: 1.4;
+    text-align: center;
     transition: background-color .15s, color .15s;
 }
 
