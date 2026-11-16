@@ -553,6 +553,31 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .card-content {
         white-space: nowrap;
     }
 }
+
+/* ── 正文列可被压缩 + 宽表格自己滚 ────────────────────────────
+   正文里有长表格 / 长行内代码时，列的 min-content 会被撑得很大；
+   flex 子项默认 min-width:auto，于是整行放不下，右栏被挤出容器、
+   贴着视口右边缘被切掉（左右留白也不对称了）。
+   给正文列放开 min-width，再让表格在卡片内部横向滚动 */
+body .column-main {
+    min-width: 0;
+}
+
+body .column-main .content > table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 卡片里的代码块和行内长标识符同理，别把列撑破 */
+body .column-main .content pre {
+    max-width: 100%;
+}
+
+body .column-main .content :is(p, li, td, th) code {
+    overflow-wrap: anywhere;
+}
 </style>`;
 
 hexo.extend.injector.register('head_end', css, 'default');
