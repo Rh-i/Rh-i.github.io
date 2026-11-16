@@ -290,10 +290,12 @@ const script = `<script id="site-sidebar-toggle">
 
         var bottomBtn = document.getElementById('sb-toggle-bottom');
         if (bottomBtn) {
+            // 竖屏时这块内容排在正文下方，叫「侧栏」名不副实，
+            // 用和正文里那条隔断一致的说法：更多
             bottomBtn.setAttribute('aria-expanded', hiddenLeft ? 'false' : 'true');
-            bottomBtn.setAttribute('aria-label', hiddenLeft ? '展开侧栏' : '收起侧栏');
+            bottomBtn.setAttribute('aria-label', hiddenLeft ? '展开更多' : '收起更多');
             bottomBtn.innerHTML = '<span>' +
-                (hiddenLeft ? '展开侧栏' : '收起侧栏') +
+                (hiddenLeft ? '展开更多' : '收起更多') +
                 '</span><span class="sb-toggle-bottom-arrow">&#9662;</span>';
         }
     }
