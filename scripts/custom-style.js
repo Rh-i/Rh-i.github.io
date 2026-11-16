@@ -469,6 +469,10 @@ body .footer .level-end {
     /* 卡片内边距：同样线性，移动端约 14/11px，1440 约 38/42px */
     --site-pad-y: clamp(0.9375rem, 2.2vw + 0.45rem, 2.75rem);
     --site-pad-x: clamp(0.6875rem, 3vw, 3rem);
+
+    /* 侧栏卡片之间的间距。取 3rem(42px) = 顶栏底边到第一张卡片的距离，
+       让“卡片到顶栏”和“卡片到卡片”看起来一样宽 */
+    --site-card-gap: 3rem;
 }
 
 /* 消费变量：横向留白只由 --site-gutter 一处决定。
@@ -504,6 +508,18 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .card-content {
         flex: 1 1 auto;
         width: auto;
         max-width: none;
+    }
+
+    /* 侧栏卡片之间的间距 = 顶栏底边到第一张卡片的距离（--site-card-gap），
+       两处一样宽，看上去才是同一套节奏 */
+    body .column-left > .widget,
+    body .column-right > .widget {
+        margin-top: var(--site-card-gap);
+    }
+
+    body .column-left > .widget:first-child,
+    body .column-right > .widget:first-child {
+        margin-top: 0;
     }
 }
 

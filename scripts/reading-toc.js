@@ -39,7 +39,7 @@ const style = `<style id="site-reading-toc">
         border-radius: 3px;
     }
 
-    /* 目录卡片底部的小按钮：收起 / 展开「本文分类」「本文标签」 */
+    /* 目录卡片底部的小按钮：展开 / 收缩「本文分类」「本文标签」 */
     body .column-left > .widget[data-type="toc"] > .toc-meta-toggle {
         display: block;
         width: 100%;
@@ -56,6 +56,10 @@ const style = `<style id="site-reading-toc">
         cursor: pointer;
     }
 
+    body.is-reading .column-left > .widget[data-type="toc"] > .toc-meta-toggle {
+        display: block;
+    }
+
     body .column-left > .widget[data-type="toc"] > .toc-meta-toggle:hover,
     body .column-left > .widget[data-type="toc"] > .toc-meta-toggle:focus-visible {
         opacity: 1;
@@ -64,17 +68,58 @@ const style = `<style id="site-reading-toc">
 
     /* 手机上的目录浮层里用不着这个按钮 */
     #toc.is-active > .toc-meta-toggle {
+        display: none !important;
+    }
+
+    /* 阅读态默认只给目录：「本文分类」「本文标签」收起来，占的高度让给目录 */
+    body.is-reading .column-left > .post-meta-widget {
         display: none;
     }
 
-    /* 收起后：左栏只剩目录，目录卡片把腾出的高度全吃掉 */
-    body.meta-folded .column-left > .post-meta-widget {
+    /* 用户点了目录底部那个按钮，两种状态下都以按钮的选择为准 */
+    body.meta-hidden .column-left > .post-meta-widget {
         display: none;
     }
 
-    /* 两栏布局（卡片已搬进左栏、左栏不限高）时，目录靠这个上限变长 */
-    body.meta-folded .column-left.sb-migrated > .widget[data-type="toc"] .card-content {
-        max-height: min(70vh, 42rem);
+    body.meta-shown .column-left > .post-meta-widget {
+        display: block;
+    }
+
+    /* ── 阅读态：左栏压进一屏，只给目录和那个按钮 ────────────
+       目录 flex 撑满剩余高度：分类/标签收起时它顶满整栏；
+       展开分类/标签后目录自动缩回去，两者加起来也正好占满。
+       「更多」那组搬过来的卡片在阅读时不需要，先藏起来 */
+    body.is-reading .column-left {
+        display: flex;
+        flex-direction: column;
+        /* 必须给确定高度：只写 max-height 时容器高度跟着内容走，
+           flex: 1 没有剩余空间可分，目录就撑不满整栏 */
+        height: calc(100vh - 7.5rem);
+        max-height: calc(100vh - 7.5rem);
+    }
+
+    body.is-reading .column-left > .widget:not([data-type="toc"]) {
+        flex: 0 0 auto;
+    }
+
+    body.is-reading .column-left > .widget[data-type="toc"] {
+        flex: 1 1 auto;
+        min-height: 9rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.is-reading .column-left > .widget[data-type="toc"] .card-content {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+        overflow-y: auto;
+    }
+
+    body.is-reading .column-left > .sb-split,
+    body.is-reading .column-left > [data-sb-moved],
+    body.is-reading .column-left > .column-right-shadow {
+        display: none !important;
     }
 
     /* 目录内部不要任何过渡：切换高亮时主题会给 <ul> 加类名，
@@ -84,37 +129,11 @@ const style = `<style id="site-reading-toc">
         transition: none !important;
     }
 
-    /* ── 只有「右栏还在、卡片没被搬进左栏」时才把左栏压进一屏 ────
-       分类 / 标签保持自身高度完整显示，剩下的高度全给目录（约 3/4）；
-       搬动过的左栏（.sb-migrated，右栏被隐藏时的「更多」那组卡片）
-       不能压高度，否则下面那几大块卡片会被截掉、根本看不到 */
-    body .column-left:not(.sb-migrated) {
-        display: flex;
-        flex-direction: column;
-        max-height: calc(100vh - 7.5rem);
-    }
-
-    body .column-left:not(.sb-migrated) > .widget:not([data-type="toc"]) {
+    /* ── 非阅读态（文章顶部的标题区）：保持自然高度 ──
+       简介 / 分类 / 标签 / 目录 全都在，目录内容限高自己滚；
+       这里不压高度，否则「更多」那组卡片会被截掉 */
+    body .column-left > .widget:not([data-type="toc"]) {
         flex: 0 0 auto;
-    }
-
-    body .column-left:not(.sb-migrated) > .widget[data-type="toc"] {
-        flex: 1 1 auto;
-        min-height: 9rem;
-        display: flex;
-        flex-direction: column;
-    }
-
-    body .column-left:not(.sb-migrated) > .widget[data-type="toc"] .card-content {
-        flex: 1 1 auto;
-        min-height: 0;
-        max-height: none;
-    }
-
-    /* 搬过卡片的左栏：不限高，但阅读时目录依然排到最前面 */
-    body.is-reading .column-left.sb-migrated {
-        display: flex;
-        flex-direction: column;
     }
 
     /* 阅读态：简介卡片直接收起，目录顶到最上面（不做过渡） */
@@ -124,8 +143,8 @@ const style = `<style id="site-reading-toc">
 
     body.is-reading .column-left > .widget[data-type="toc"] {
         order: -1;
-        /* 变成第一张卡片后，卡片之间那 21px 的上间距要抵消，
-           否则目录卡片会比正文卡片低 21px，看着“间距不对” */
+        /* 变成第一张卡片后，卡片之间的那个上间距要抵消，
+           否则目录卡片会比正文卡片低，看着“间距不对” */
         margin-top: 0;
     }
 }
@@ -158,6 +177,10 @@ const script = `<script id="site-reading-toc-script">
         var reading = window.pageYOffset > line;
         if (reading !== body.classList.contains('is-reading')) {
             body.classList.toggle('is-reading', reading);
+            /* 用户没手动选过时：进阅读态自动收起分类/标签，回到顶部就恢复 */
+            if (readMeta() === null) {
+                setMeta(reading);
+            }
         }
     }
 
@@ -284,30 +307,43 @@ const script = `<script id="site-reading-toc-script">
         return true;
     }
 
-    /* 目录卡片底部放一个「收起分类与标签」的按钮：
-       左栏就那么多高度，把这两张卡片收起来，目录能多吃 190px 左右的长度 */
-    var META_FOLDED = 'blog.left.meta.folded';
+    /* 目录卡片底部放一个展开 / 收缩「分类与标签」的按钮：
+       阅读时左栏只留目录，需要看分类/标签时点一下 */
+    var META_STATE = 'blog.left.meta.state';
 
     function readMeta() {
         try {
-            return window.localStorage.getItem(META_FOLDED) === '1';
+            return window.localStorage.getItem(META_STATE);
         } catch (e) {
-            return false;
+            return null;
         }
     }
 
-    function saveMeta(folded) {
+    function saveMeta(state) {
         try {
-            window.localStorage.setItem(META_FOLDED, folded ? '1' : '0');
+            window.localStorage.setItem(META_STATE, state);
         } catch (e) {
             /* 隐私模式忽略 */
         }
     }
 
+    function metaHidden() {
+        return body.classList.contains('meta-hidden');
+    }
+
+    function setMeta(hidden) {
+        body.classList.toggle('meta-hidden', hidden);
+        body.classList.toggle('meta-shown', !hidden);
+        var button = document.querySelector('.toc-meta-toggle');
+        if (button) {
+            syncMetaButton(button);
+        }
+    }
+
     function syncMetaButton(button) {
-        var folded = body.classList.contains('meta-folded');
-        button.textContent = folded ? '展开分类与标签' : '收起分类与标签';
-        button.setAttribute('aria-expanded', folded ? 'false' : 'true');
+        var hidden = metaHidden();
+        button.textContent = hidden ? '展开分类标签' : '收缩分类标签';
+        button.setAttribute('aria-expanded', hidden ? 'false' : 'true');
     }
 
     function ensureMetaToggle() {
@@ -320,8 +356,9 @@ const script = `<script id="site-reading-toc-script">
         button.type = 'button';
         button.className = 'toc-meta-toggle';
         button.addEventListener('click', function () {
-            var folded = body.classList.toggle('meta-folded');
-            saveMeta(folded);
+            var hidden = !metaHidden();
+            setMeta(hidden);
+            saveMeta(hidden ? 'hidden' : 'shown');
             syncMetaButton(button);
         });
 
@@ -350,20 +387,18 @@ const script = `<script id="site-reading-toc-script">
     window.addEventListener('scroll', apply, { passive: true });
     window.addEventListener('resize', refresh);
 
-    document.addEventListener('DOMContentLoaded', function () {
-        if (readMeta()) {
-            body.classList.add('meta-folded');
+    function init() {
+        /* 记过选择就按记的来；否则顶部全显示，进入阅读态时再收起分类/标签 */
+        var saved = readMeta();
+        if (saved === 'hidden' || saved === 'shown') {
+            setMeta(saved === 'hidden');
         }
         ensureMetaToggle();
         refresh();
-    });
-    document.addEventListener('pjax:complete', function () {
-        if (readMeta()) {
-            body.classList.add('meta-folded');
-        }
-        ensureMetaToggle();
-        refresh();
-    });
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('pjax:complete', init);
 }());
 </script>`;
 
