@@ -68,6 +68,12 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > :is(h2
     line-height: 1.35;
 }
 
+/* 正文第一个元素不留上边距：独立页面（关于）隐藏了大标题之后，
+   下面第一个 h2 的 32px 上间距会变成一块莫名空白 */
+body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > :first-child {
+    margin-top: 0;
+}
+
 /* 代码块：主题用的是 1.85 倍行高，显得又高又空。
    这里收紧字号、行高和内外边距，内部两个 pre 强制清零；
    圆角放大到 10px 并裁掉溢出，视觉上更柔和 */
@@ -103,6 +109,26 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > blockq
 
 body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > blockquote > p:last-child {
     margin-bottom: 0;
+}
+
+/* 独立页面的大标题：
+   - 搜索页：标题「搜索」和下面的输入框重复
+   - 关于页：正文自己已经有「1. 关于我」这种小节标题
+   文章页带 .article-meta，不受影响 */
+.card-content.article:has(#local-search) > h1.title,
+.card-content.article:not(:has(.article-meta)):has(> .content h2) > h1.title {
+    display: none;
+}
+
+/* 搜索结果里的关键字标签：主题用的是 Bulma 的 is-light（写死 #f5f5f5），
+   暗色主题下是刺眼的白块，换成和侧栏标签一致的半透明灰 */
+#local-search .tag.is-light {
+    background: rgba(128, 128, 128, .16);
+    color: inherit;
+    border: none;
+    font-weight: normal;
+    letter-spacing: 0;
+    text-transform: none;
 }
 
 /* 右侧「标签」卡片的标签底色：主题默认用 Bulma 的链接色（一块亮蓝），
@@ -279,10 +305,10 @@ body > .navbar .navbar-end > .navbar-item {
 
 /* 收进汉堡按钮后，菜单区里只剩「汉堡 + 右侧图标」，
    用 margin-left:auto 把它们整组推到最右边，和展开时右对齐的位置一致。
-   顺带把主题那个整格子的深色底改成圆角浅底，不要顶到导航栏上下边 */
+   顺带把主题那个整格子的深色底改成圆角浅底（加 margin-block 会把导航栏撑高 8px，
+   所以这里只圆角、不加外边距） */
 body > .navbar .navbar-toggle {
     margin-left: auto;
-    margin-block: .375rem;
     background: transparent;
     border-radius: 8px;
     transition: background-color .15s, color .15s;
@@ -338,9 +364,40 @@ body > .navbar.is-collapsed .navbar-start > .navbar-item:focus-visible {
     background: rgba(128, 128, 128, .16);
 }
 
+/* 汉堡面板淡入：主题只切换 display，transition 不会触发，用 animation */
+@keyframes sb-nav-panel-in {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+body > .navbar.is-open .navbar-start {
+    animation: sb-nav-panel-in .18s ease-out;
+}
+
+/* 系统开了「减少动态效果」就不做位移/淡入 */
+@media screen and (prefers-reduced-motion: reduce) {
+    body > .navbar.is-open .navbar-start {
+        animation: none;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 /* 页脚用和导航栏同一套逻辑：左边信息、右边图标，先保持一行，
-   放不下时图标整体换到下一行（仍靠右），
-   而不是像主题那样一到 769px 就直接变成上下两堆 */
+   放不下时整块换行，而不是像主题那样一到 769px 就直接变成上下两堆 */
 body .footer .container > .level {
     display: flex;
     align-items: center;
@@ -356,13 +413,11 @@ body .footer .level-start {
     text-align: left;
 }
 
-/* 左右都 auto：同一行时 level-start 用 flex-grow 把空间吃干净，
-   auto 边距分不到空间，图标就贴在右边；换到第二行后那一行只剩图标，
-   剩余空间会被两侧 auto 边距平分，于是自动居中 */
+/* 图标列：同一行时靠右顶到容器边缘（level-start 的 flex-grow 吃干净剩余空间，
+   auto 左外边距分不到空间）；换行时由下面的窄屏媒体查询接管居中 */
 body .footer .level-end {
     flex: 0 0 auto;
     margin-left: auto;
-    margin-right: auto;
 }
 
 /* 窄屏（放不下一行时）整体改成一列居中：logo / 版权文字 / 图标都居中 */
@@ -425,13 +480,7 @@ body .footer .level-end {
     --site-max: 100%;
 }
 
-/* 标准：4:3 ~ 16:9（16:10 笔记本、iPad 横屏） */
-@media screen and (min-width: 1216px) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 16/9) {
-    :root {
-        --site-pad-y: 2.5rem;
-        --site-pad-x: 2.75rem;
-    }
-}
+/* 标准：4:3 ~ 16:9 这一段和默认值一致，无需单独声明 */
 
 /* 宽屏：16:9 ~ 21:9（1080p / 1440p），min-height 排除手机横屏 */
 @media screen and (min-width: 1216px) and (min-aspect-ratio: 16/9) and (max-aspect-ratio: 21/9) and (min-height: 700px) {
@@ -506,7 +555,8 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .card-content {
 }
 
 /* 小屏手机（≤640px）：Bulma 栅格的负 margin 与列内边距成对归零，
-   再压卡片内边距，把宽度尽量还给正文（375 屏可到 92%） */
+   再压卡片内边距，把宽度尽量还给正文（375 屏可到 92%）；
+   同时把表格改成可横向滚动的块，否则中文列名会被挤成两行 */
 @media screen and (max-width: 640px) {
     body .columns {
         margin-left: 0;
@@ -521,11 +571,7 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .card-content {
     body .column-main .card-content {
         padding: .875rem .625rem;
     }
-}
 
-/* 窄屏表格：主题没给 table 包滚动容器，中文列名会被挤成两行。
-   改成块级 + 横向滚动，保持单元格内容不折行 */
-@media screen and (max-width: 640px) {
     .content > table {
         display: block;
         overflow-x: auto;

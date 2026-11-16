@@ -39,12 +39,6 @@ const script = `<script id="site-post-sidebar">
         }
     }
 
-    function esc(s) {
-        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-        });
-    }
-
     function collect(scope, selector) {
         var out = [];
         if (!scope) {
@@ -61,17 +55,37 @@ const script = `<script id="site-post-sidebar">
         return out;
     }
 
+    // 用 DOM 构造而不是拼字符串：标题和名字都是正文里的文本，
+    // 拼 HTML 就得自己转义，用 textContent 天然安全
     function makeCard(title, items) {
         var card = document.createElement('div');
         card.className = 'card widget post-meta-widget';
-        var tags = items.map(function (item) {
-            return '<a class="tag post-meta-tag mr-1 mb-1" href="' + esc(item.url) + '">'
-                + esc(item.name) + '</a>';
-        }).join('');
-        card.innerHTML = '<div class="card-content"><div class="menu">'
-            + '<h3 class="menu-label">' + esc(title) + '</h3>'
-            + '<div class="field is-grouped is-grouped-multiline">' + tags + '</div>'
-            + '</div></div>';
+
+        var content = document.createElement('div');
+        content.className = 'card-content';
+
+        var menu = document.createElement('div');
+        menu.className = 'menu';
+
+        var label = document.createElement('h3');
+        label.className = 'menu-label';
+        label.textContent = title;
+
+        var field = document.createElement('div');
+        field.className = 'field is-grouped is-grouped-multiline';
+
+        items.forEach(function (item) {
+            var link = document.createElement('a');
+            link.className = 'tag post-meta-tag mr-1 mb-1';
+            link.setAttribute('href', item.url);
+            link.textContent = item.name;
+            field.appendChild(link);
+        });
+
+        menu.appendChild(label);
+        menu.appendChild(field);
+        content.appendChild(menu);
+        card.appendChild(content);
         return card;
     }
 

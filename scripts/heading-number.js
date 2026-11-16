@@ -19,7 +19,8 @@
 
 const HEADING_RE = /^(#{2,6})[ \t]+(.+?)[ \t]*$/;
 const EXISTING_NUMBER_RE = /^\d+(?:\.\d+)*[.．、]?[ \t]+/;
-const FENCE_RE = /^[ \t]*(```|~~~)/;
+
+const { eachLine } = require('./lib/markdown-scan');
 
 hexo.extend.filter.register('before_post_render', function (data) {
     const content = data.content;
@@ -29,29 +30,12 @@ hexo.extend.filter.register('before_post_render', function (data) {
 
     const lines = content.split('\n');
     const counters = [0, 0, 0, 0, 0]; // h2 ~ h6 各自的出现次数
-    let fence = null;
     let changed = false;
 
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-
-        // 代码块里的 # 不是标题
-        const fenceMatch = FENCE_RE.exec(line);
-        if (fenceMatch) {
-            if (fence === null) {
-                fence = fenceMatch[1];
-            } else if (fence === fenceMatch[1]) {
-                fence = null;
-            }
-            continue;
-        }
-        if (fence !== null) {
-            continue;
-        }
-
+    eachLine(lines, (line, i) => {
         const match = HEADING_RE.exec(line);
         if (!match) {
-            continue;
+            return;
         }
 
         const level = match[1].length;
@@ -73,7 +57,7 @@ hexo.extend.filter.register('before_post_render', function (data) {
         const text = match[2].replace(EXISTING_NUMBER_RE, '');
         lines[i] = match[1] + ' ' + number + ' ' + text;
         changed = true;
-    }
+    });
 
     if (changed) {
         data.content = lines.join('\n');

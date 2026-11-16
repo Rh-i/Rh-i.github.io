@@ -18,30 +18,20 @@
 const MORE = '<!-- more -->';
 const MORE_RE = /<!--\s*more\s*-->/i;
 const HEADING2_RE = /^##[ \t]+\S/;
-const FENCE_RE = /^[ \t]*(```|~~~)/;
+
+const { eachLine } = require('./lib/markdown-scan');
 
 function findInsertIndex(lines) {
-    let fence = null;
+    let headingAt = -1;
 
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
+    eachLine(lines, (line, i) => {
+        if (headingAt === -1 && HEADING2_RE.test(line)) {
+            headingAt = i;
+        }
+    });
 
-        const fenceMatch = FENCE_RE.exec(line);
-        if (fenceMatch) {
-            if (fence === null) {
-                fence = fenceMatch[1];
-            } else if (fence === fenceMatch[1]) {
-                fence = null;
-            }
-            continue;
-        }
-        if (fence !== null) {
-            continue;
-        }
-
-        if (HEADING2_RE.test(line)) {
-            return i;
-        }
+    if (headingAt !== -1) {
+        return headingAt;
     }
 
     // 没有二级标题：退而求其次，在第一段之后的空行处切分

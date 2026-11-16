@@ -27,11 +27,23 @@ const script = `<script id="site-giscus-theme-sync">
     function sync() {
         var frame = document.querySelector('iframe.giscus-frame');
         if (!frame || !frame.contentWindow) {
-            return;
+            return false;
         }
         frame.contentWindow.postMessage({
             giscus: { setConfig: { theme: isDark() ? THEME.dark : THEME.light } }
         }, 'https://giscus.app');
+        return true;
+    }
+
+    // iframe 比脚本晚加载，所以做几次短间隔重试。
+    // 不再写死一个「差不多够长」的延时：慢网下会漏，快网下白等
+    function retry(times) {
+        if (sync() || times <= 0) {
+            return;
+        }
+        setTimeout(function () {
+            retry(times - 1);
+        }, 300);
     }
 
     // 切换按钮改的就是 <html data-appearance>，监听它即可
@@ -40,12 +52,12 @@ const script = `<script id="site-giscus-theme-sync">
         attributeFilter: ['data-appearance']
     });
 
-    // iframe 加载比脚本晚，首次和 Pjax 切换后各补一次
+    // 首次加载和 Pjax 切换后各补一次（内部会自己重试）
     window.addEventListener('load', function () {
-        setTimeout(sync, 1200);
+        retry(8);
     });
     document.addEventListener('pjax:complete', function () {
-        setTimeout(sync, 1500);
+        retry(8);
     });
 })();
 </script>`;

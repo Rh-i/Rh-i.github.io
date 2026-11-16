@@ -16,7 +16,7 @@ const DELIMITERS = [
     { left: '\\(', right: '\\)', display: false }
 ];
 
-const script = `<script>
+const script = `<script id="site-katex-inline">
 (function () {
     var DELIMITERS = ${JSON.stringify(DELIMITERS)};
 
