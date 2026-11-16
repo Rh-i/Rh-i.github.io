@@ -257,6 +257,14 @@ const script = `<script id="site-sidebar-toggle">
         return read(key) === '0';
     }
 
+    function forget(key) {
+        try {
+            window.localStorage.removeItem(key);
+        } catch (e) {
+            /* 同上，忽略 */
+        }
+    }
+
     function visible(el) {
         return !!el && el.offsetWidth > 0;
     }
@@ -357,8 +365,14 @@ const script = `<script id="site-sidebar-toggle">
                 return;
             }
 
-            var isFolded = read(FOLDED) === '0';
-            var divider = document.createElement('button');
+            // 默认值跟右栏状态联动：
+            //   · 手动收起了右栏 → 搬过来的这组卡片默认是收起的，只留一条「更多」
+            //   · 纯靠媒体查询隐藏（手机宽度）→ 默认展开，不然手机上要再点一下才看得到
+            // 用户点过「更多」就记住他的选择，不再被默认值覆盖
+            var stored = read(FOLDED);
+            var isFolded = stored === null
+                ? isHidden(RIGHT)
+                : stored === '0';            var divider = document.createElement('button');
             divider.type = 'button';
             divider.id = 'sb-split-marker';
             divider.className = 'sb-split' + (isFolded ? ' is-collapsed' : '');
@@ -426,7 +440,12 @@ const script = `<script id="site-sidebar-toggle">
         button.className = 'sb-toggle sb-toggle-' + side;
         button.addEventListener('click', function () {
             var key = side === 'left' ? LEFT : RIGHT;
-            save(key, isHidden(key) ? '1' : '0');
+            var expanding = isHidden(key);
+            save(key, expanding ? '1' : '0');
+            // 重新展开右栏时把「更多」的偏好清掉：下次再收起右栏，它依旧默认是收起的
+            if (side === 'right' && expanding) {
+                forget(FOLDED);
+            }
             apply();
             syncVisibility();
         });
