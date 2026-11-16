@@ -59,26 +59,19 @@ body.sb-right-hidden .column-right {
 }
 
 /* 收起左栏 —— 不能简单地给 .column-left 加 display:none：
-   目录卡片（#toc）就住在左栏里，导航栏的「目录」按钮靠 #toc.is-active 弹浮层，
-   祖先一旦 display:none，浮层永远出不来（表现为点了没反应、页面只剩遮罩）。
-   所以只藏「卡片」，列本身留着：
-     - 手机上列是整行块级，藏完子元素自然就 0 高；
-     - 桌面上再把这一列的宽高收成 0，正文照样占满 */
-body.sb-left-hidden .column-left > :not([data-type="toc"]) {
-    display: none !important;
-}
-
+   目录卡片（#toc）就住在左栏里，手机宽度下主题把「目录」按钮点开的浮层
+   也是它（#toc.is-active + #toc-mask）。祖先一旦 display:none，
+   浮层永远出不来，表现为「点了没反应、页面只剩遮罩」。
+   所以：≥768 整列藏掉（那里没有目录按钮）；<768 只藏卡片，列留着。 */
 @media screen and (min-width: 768px) {
     body.sb-left-hidden .column-left {
-        flex: 0 0 0 !important;
-        width: 0 !important;
-        max-width: 0 !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-        /* 收成 0 宽但允许溢出：浮层被激活时是 position:fixed，不受影响 */
-        overflow: visible;
+        display: none !important;
+    }
+}
+
+@media screen and (max-width: 767px) {
+    body.sb-left-hidden .column-left > :not([data-type="toc"]) {
+        display: none !important;
     }
 }
 
