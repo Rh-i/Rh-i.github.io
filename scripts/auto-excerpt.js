@@ -7,7 +7,7 @@
  * 让首页只显示标题之前的部分，后面接主题的「阅读更多」按钮。
  *
  * 规则：
- *   1. 文章里已经有 <!-- more --> 的，不动（保留手动控制权）
+ *   1. 文章里已经有独立一行的 <!-- more --> 的，不动（保留手动控制权）
  *   2. 没有 ## 的，退而在第一段之后插入
  *   3. 只有一段、连空行都没有的，不插入（首页会显示全文，属正常）
  *
@@ -16,10 +16,25 @@
  */
 
 const MORE = '<!-- more -->';
-const MORE_RE = /<!--\s*more\s*-->/i;
+/* 必须独占一行才算真正的摘要标记：
+   文章正文里用行内代码提到 `<!-- more -->` 时（比如写说明文档），
+   用宽松匹配会误以为已经有手动摘要，导致这篇不上摘要、首页铺全文 */
+const MORE_RE = /^\s*<!--\s*more\s*-->\s*$/;
 const HEADING2_RE = /^##[ \t]+\S/;
 
 const { eachLine } = require('./lib/markdown-scan');
+
+function hasManualMore(lines) {
+    let found = false;
+
+    eachLine(lines, line => {
+        if (MORE_RE.test(line)) {
+            found = true;
+        }
+    });
+
+    return found;
+}
 
 function findInsertIndex(lines) {
     let headingAt = -1;
@@ -55,11 +70,15 @@ hexo.extend.filter.register('before_post_render', function (data) {
     }
 
     const content = data.content;
-    if (!content || MORE_RE.test(content)) {
+    if (!content) {
         return data;
     }
 
     const lines = content.split('\n');
+    if (hasManualMore(lines)) {
+        return data;
+    }
+
     const index = findInsertIndex(lines);
     if (index < 1) {
         return data;
