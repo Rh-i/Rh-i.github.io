@@ -21,6 +21,12 @@
  */
 
 const style = `<style id="site-reading-toc">
+/* 滚动条槽位始终预留：文章页会从“页面滚”变成“正文列滚”，
+   不预留的话进出阅读态时内容会横向抽一下（少了一条滚动条的宽度） */
+html {
+    scrollbar-gutter: stable;
+}
+
 /* 「收起 / 展开分类标签」按钮只在桌面档的阅读态出现：
    手机上目录是浮层，这个按钮用不上 */
 body .column-left > .toc-meta-toggle {
@@ -28,22 +34,17 @@ body .column-left > .toc-meta-toggle {
 }
 
 @media screen and (min-width: 769px) {
-    /* 目录卡片内容统一限高，长目录在卡片里自己滚 */
+    /* 目录卡片内容统一限高，长目录在卡片里自己滚（不显示拖动条） */
     body .column-left > .widget[data-type="toc"] .card-content {
         max-height: min(52vh, 26rem);
         overflow-y: auto;
         overscroll-behavior: contain;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(128, 128, 128, .35) transparent;
+        scrollbar-width: none;
     }
 
     body .column-left > .widget[data-type="toc"] .card-content::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    body .column-left > .widget[data-type="toc"] .card-content::-webkit-scrollbar-thumb {
-        background: rgba(128, 128, 128, .35);
-        border-radius: 3px;
+        width: 0;
+        height: 0;
     }
 
     /* 左栏顶部的小按钮：收起 / 展开「本文分类」「本文标签」。
@@ -148,18 +149,55 @@ body .column-left > .toc-meta-toggle {
         max-height: calc(100vh - 8.75rem);
         overflow-y: auto;
         overscroll-behavior: contain;
-        scrollbar-width: thin;
+        scrollbar-width: none;
     }
 
-    /* 中间只留正文卡片一张：正文跟着页面滚。
-       之前把 .column-main > .card 全部设成「固定高度 + 卡片内滚动」，
-       评论那张卡片也吃了同一套规则，两张 sticky 卡片互相让位、
-       内部滚动又链不到页面，评论就永远够不着 —— 这里不再碰它 */
-    body.is-reading .column-main > .card {
-        position: static;
-        height: auto;
-        max-height: none;
-        overflow: visible;
+    /* 左右两栏各滚各的，但不显示拖动条（拖动条只留给正文那一列） */
+    body.is-reading .column-left {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+    }
+
+    body.is-reading .column-left::-webkit-scrollbar,
+    body.is-reading .column-right.is-sticky::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+    }
+
+    /* ── 正文那一列自己滚，卡片跟左右两栏一样上下留白 ──────────
+       滚动容器放在 .column-main 上（不是单张卡片）：
+       这样 scrollbar 只占 91 ~ 1480 这一段，上下都离屏幕边缘有距离，
+       而且评论卡片也在这条滚动区域里，滚到底就能看见，不会出现
+       「两张卡片互相让位、评论永远够不着」那种毛病 */
+    body.has-toc .column-main {
+        position: sticky;
+        top: 6.5rem;
+        height: calc(100vh - 8.75rem);
+        max-height: calc(100vh - 8.75rem);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(128, 128, 128, .35) transparent;
+    }
+
+    body.has-toc .column-main::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    body.has-toc .column-main::-webkit-scrollbar-thumb {
+        background: rgba(128, 128, 128, .35);
+        border-radius: 4px;
+    }
+
+    body.has-toc .column-main::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    /* 阅读态页脚收起来：不收起的话页面本身就比视口高，
+       最右边还会多出一条贯通上下的拖动条，跟正文列那条打架；
+       退出阅读态（滚回顶部）页脚自动回来 */
+    body.is-reading .footer {
+        display: none;
     }
 
     /* 目录内部不要任何过渡：切换高亮时主题会给 <ul> 加类名，
@@ -175,6 +213,9 @@ body .column-left > .toc-meta-toggle {
     body .column-left > .widget:not([data-type="toc"]) {
         flex: 0 0 auto;
     }
+
+    /* 文章顶部（还没开读）右栏要整列都看得见：「最新文章」的条目由脚本
+       按可用高度从下往上收（见 fitRightColumn），不在这里写死 */
 
     /* 阅读态：简介卡片直接收起，让最上面空出来放按钮和目录 */
     body.is-reading .column-left > .widget[data-type="profile"] {
@@ -192,7 +233,19 @@ body .column-left > .toc-meta-toggle {
 const script = `<script id="site-reading-toc-script">
 (function () {
     var body = document.body;
-    var line = 240;   /* 正文标题区滚过的位置，load / resize / pjax 时重算 */
+    var line = 240;   /* 手机上正文标题区滚过的位置，load / resize / pjax 时重算 */
+
+    /* 有目录的页面（文章页）立刻打上标记：正文那一列的「固定高度 + 自己滚」
+       样式靠它生效，越早加上越不会闪一下 */
+    function markTocPage() {
+        if (document.getElementById('toc')) {
+            body.classList.add('has-toc');
+        } else {
+            body.classList.remove('has-toc');
+        }
+    }
+
+    markTocPage();
 
     function measure() {
         var card = document.querySelector('.column-main .article');
@@ -202,6 +255,17 @@ const script = `<script id="site-reading-toc-script">
         }
         var top = card.getBoundingClientRect().top + window.pageYOffset;
         line = Math.max(160, top - 96);
+    }
+
+    /* 桌面档下正文列自己滚（.column-main 是 sticky 的滚动容器），
+       所以用它的 scrollTop 判断是不是已经开读；
+       手机档没有那套样式，仍然看页面滚动 */
+    function wide() {
+        return window.matchMedia('(min-width: 769px)').matches;
+    }
+
+    function mainScroller() {
+        return document.querySelector('.column-main');
     }
 
     /* 进 / 出各用一个阈值：在临界点上下小幅滚动时不会来回切布局 */
@@ -214,21 +278,103 @@ const script = `<script id="site-reading-toc-script">
             return;
         }
 
+        var box = mainScroller();
+        var inner = box ? box.scrollTop : 0;
+        var isWide = wide();
+        var pos = isWide ? inner : window.pageYOffset;
         var reading = body.classList.contains('is-reading');
         var want = reading
-            ? window.pageYOffset > line - 48
-            : window.pageYOffset > line;
+            ? pos > 8
+            : pos > (isWide ? 48 : line);
 
         if (want === reading) {
             return;
         }
 
         body.classList.toggle('is-reading', want);
+        fitRightColumn();
+    }
+
+    /* ── 右栏要塞进一屏 ───────────────────────────────────────
+       文章顶部这个状态下页面已经不会滚了，右栏超出的部分就是永远看不见。
+       「最新文章」只留一条（完整列表太长，一条就把标签 / 日历挤到屏外）；
+       一条都放不下就整张卡片收起，再不行把贡献日历也收掉 */
+    /* 「最新文章」是最长的一张，放到右栏最下面：
+       万一真的放不下，被挤出去的也是它自己，不会连累标签 / 日历 */
+    function moveRecentToEnd() {
+        var right = document.querySelector('.column-right');
+        if (!right) {
+            return;
+        }
+        var recent = right.querySelector('.widget[data-type="recent-posts"]');
+        if (recent && right.lastElementChild !== recent) {
+            right.appendChild(recent);
+        }
+    }
+
+    function fitRightColumn() {
+        var right = document.querySelector('.column-right');
+        if (!right) {
+            return;
+        }
+
+        var recent = right.querySelector('.widget[data-type="recent-posts"]');
+        var calendar = right.querySelector('.widget[data-type="github_calendar"]');
+        var items = recent
+            ? [].slice.call(recent.querySelectorAll('.card-content > article.media'))
+            : [];
+
+        /* 每次先从“全部显示”重算，pjax / 尺寸变化才不会越藏越多 */
+        items.forEach(function (item) {
+            item.style.display = '';
+        });
+        if (recent) {
+            recent.style.display = '';
+        }
+        if (calendar) {
+            calendar.style.display = '';
+        }
+
+        /* 阅读态右栏是固定高度、卡片自己滚，不用裁 */
+        if (body.classList.contains('is-reading')) {
+            return;
+        }
+
+        var limit = window.innerHeight - 24;
+        var fits = function () {
+            return right.getBoundingClientRect().bottom <= limit;
+        };
+
+        if (fits()) {
+            return;
+        }
+
+        /* 「最新文章」只留最新一条；连这一条都放不下就把整张卡片收起来 */
+        for (var i = 1; i < items.length; i++) {
+            items[i].style.display = 'none';
+        }
+
+        if (fits()) {
+            return;
+        }
+
+        if (recent) {
+            recent.style.display = 'none';
+        }
+        if (fits()) {
+            return;
+        }
+
+        if (calendar) {
+            calendar.style.display = 'none';
+        }
     }
 
     function refresh() {
         measure();
         apply();
+        moveRecentToEnd();
+        fitRightColumn();
     }
 
     /* ── 点目录跳转：直接跳过去，不要平滑滚动 ──────────────────
@@ -452,6 +598,7 @@ const script = `<script id="site-reading-toc-script">
     window.addEventListener('resize', refresh);
 
     function init() {
+        markTocPage();
         /* 默认展开：只有用户亲手点过「收起」才收 */
         setMeta(readMeta() === 'hidden');
         ensureMetaToggle();
