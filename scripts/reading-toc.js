@@ -265,6 +265,15 @@ const script = `<script id="site-reading-toc-script">
         return document.querySelector('.column-main');
     }
 
+    /* 进入阅读态时右栏变成固定高度、自己滚（拖动条隐藏），
+       上一次可能停在半路 —— 这里统一把它滑回最上面 */
+    function resetRightScroll() {
+        var right = document.querySelector('.column-right');
+        if (right) {
+            right.scrollTop = 0;
+        }
+    }
+
     /* 进 / 出各用一个阈值：在临界点上下小幅滚动时不会来回切布局 */
     function apply() {
         /* 没有目录的页面（首页 / 归档 / 标签…）不进入阅读态 */
@@ -289,6 +298,9 @@ const script = `<script id="site-reading-toc-script">
         }
 
         body.classList.toggle('is-reading', want);
+        if (want) {
+            resetRightScroll();
+        }
         fitRightColumn();
     }
 
@@ -485,6 +497,7 @@ const script = `<script id="site-reading-toc-script">
            左栏会重排一次，视觉上就是跳转时“抽一下” */
         if (!body.classList.contains('is-reading')) {
             body.classList.add('is-reading');
+            resetRightScroll();
         }
 
         /* 标题自己的 scroll-margin-top 会让开常驻的导航栏 */
