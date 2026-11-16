@@ -39,6 +39,13 @@ const style = `<style id="site-reading-toc">
         border-radius: 3px;
     }
 
+    /* 目录内部不要任何过渡：切换高亮时主题会给 <ul> 加类名，
+       若带 transition: all 就会连着布局一起动画，点条目时看着卡 */
+    body .column-left > .widget[data-type="toc"],
+    body .column-left > .widget[data-type="toc"] * {
+        transition: none !important;
+    }
+
     /* ── 只有「右栏还在、卡片没被搬进左栏」时才把左栏压进一屏 ────
        分类 / 标签保持自身高度完整显示，剩下的高度全给目录（约 3/4）；
        搬动过的左栏（.sb-migrated，右栏被隐藏时的「更多」那组卡片）
@@ -124,32 +131,31 @@ const script = `<script id="site-reading-toc-script">
        目录卡片自己也会被滚来滚去 —— 看着很鬼畜。
        这里在捕获阶段拦下点击（stopPropagation 让 toc.js 的监听器不执行），
        自己瞬时跳转 + 手动写 URL，跳完只高亮目标这一条 */
-    var lock = { link: null, until: 0 };
+    var lock = { link: null, until: 0, timers: [] };
 
-    /* 锁定期间反复把高亮拉回目标项（toc.js 的 IntersectionObserver 还会改类名） */
-    function enforce() {
-        if (!lock.link || performance.now() > lock.until) {
-            return;
-        }
-
+    /* 把高亮一次性拉到目标项（连带父级）。这个函数是幂等的，重复调用只会发现
+       已经对了然后直接返回，所以可以当“跳转后补丁”打几次 ——
+       比常驻 MutationObserver 盯每一次类名变化便宜得多（那样会跟主题自己的
+       观察器互相触发，点目录时明显卡一下） */
+    function paint(link) {
         var toc = document.getElementById('toc');
-        if (!toc || !toc.contains(lock.link)) {
-            lock.link = null;
+        if (!toc || !link || !toc.contains(link)) {
             return;
         }
 
-        toc.querySelectorAll('.menu-list a.is-active').forEach(function (a) {
-            if (a !== lock.link) {
-                a.classList.remove('is-active');
+        var current = toc.querySelectorAll('.menu-list a.is-active');
+        for (var i = 0; i < current.length; i++) {
+            if (current[i] !== link) {
+                current[i].classList.remove('is-active');
             }
-        });
+        }
 
-        if (!lock.link.classList.contains('is-active')) {
-            lock.link.classList.add('is-active');
+        if (!link.classList.contains('is-active')) {
+            link.classList.add('is-active');
         }
 
         /* 子项被点亮时，把它的父级也点亮，跟主题的目录树一致 */
-        var menuList = lock.link.parentElement && lock.link.parentElement.parentElement;
+        var menuList = link.parentElement && link.parentElement.parentElement;
         while (menuList && menuList.classList && menuList.classList.contains('menu-list') &&
             menuList.parentElement && menuList.parentElement.tagName.toLowerCase() === 'li') {
             var parentLink = menuList.parentElement.children[0];
@@ -160,28 +166,29 @@ const script = `<script id="site-reading-toc-script">
         }
     }
 
-    function startWatcher() {
-        if (!window.MutationObserver) {
+    function enforce() {
+        if (!lock.link || performance.now() > lock.until) {
             return;
         }
-        var toc = document.getElementById('toc');
-        if (!toc || toc.dataset.lockWatched === '1') {
-            return;
-        }
-        toc.dataset.lockWatched = '1';
-        new MutationObserver(function () {
-            enforce();
-        }).observe(toc, { subtree: true, attributes: true, attributeFilter: ['class'] });
+        paint(lock.link);
     }
 
     function lockTo(link) {
         lock.link = link;
-        lock.until = performance.now() + 1500;
+        lock.until = performance.now() + 1200;
         enforce();
+
+        /* 主题的 IntersectionObserver 跳转后会再改一次高亮，这里只补几次，间隔很短 */
+        lock.timers.forEach(clearTimeout);
+        lock.timers = [60, 180, 400, 800].map(function (ms) {
+            return setTimeout(enforce, ms);
+        });
     }
 
     function unlock() {
         lock.link = null;
+        lock.timers.forEach(clearTimeout);
+        lock.timers = [];
     }
 
     function jumpTo(link) {
@@ -203,10 +210,16 @@ const script = `<script id="site-reading-toc-script">
             return false;
         }
 
+        /* 先把阅读态定下来再滚动：否则滚动过程中简介卡片刚好被隐藏，
+           左栏会重排一次，视觉上就是跳转时“抽一下” */
+        if (!body.classList.contains('is-reading')) {
+            body.classList.add('is-reading');
+        }
+
         /* 标题自己的 scroll-margin-top 会让开常驻的导航栏 */
         target.scrollIntoView();
 
-        /* 跳转后自己点亮这一条，并在随后的 1.5s 里拦住主题的高亮跟随 */
+        /* 同步点亮目标，再排几次补丁把主题改回去的高亮拉回来 */
         lockTo(link);
 
         if (window.history && window.history.pushState) {
@@ -239,13 +252,9 @@ const script = `<script id="site-reading-toc-script">
     window.addEventListener('scroll', apply, { passive: true });
     window.addEventListener('resize', refresh);
 
-    document.addEventListener('DOMContentLoaded', function () {
-        refresh();
-        startWatcher();
-    });
+    document.addEventListener('DOMContentLoaded', refresh);
     document.addEventListener('pjax:complete', function () {
         refresh();
-        startWatcher();
     });
 }());
 </script>`;

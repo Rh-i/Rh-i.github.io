@@ -258,7 +258,9 @@ widgets:
         # 标题本身已由 scripts/heading-number.js 带上序号，这里关掉避免出现 "1 1. 标题"
         index: false
         # Whether to collapse sub-headings when they are out-of-view
-        collapsed: true
+        # 关掉：折叠的子树在高亮切换时要展开/收起，目录一长就明显卡一下；
+        # 目录卡片本身已经限高可在内部滚动，不需要靠折叠省空间
+        collapsed: false
         # Maximum level of headings to show (1-6)
         depth: 3
     # Categories widget configurations
