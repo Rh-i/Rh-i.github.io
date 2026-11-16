@@ -61,16 +61,19 @@ body.sb-right-hidden .column-right {
     display: none !important;
 }
 
+/* 收起一侧后正文占满空出来的宽度。
+   这条不能放进 1024px 的媒体查询里：窗口缩到 1024 以下时折叠状态还保留着，
+   而 Bulma 的 .column-main 仍是 is-8-desktop 的百分比宽度，正文会缩在左边一半 */
+body.sb-left-hidden .column-main,
+body.sb-right-hidden .column-main {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+}
+
 @media screen and (min-width: 1024px) {
     .sb-toggle.is-visible {
         display: flex;
-    }
-    /* 收起一侧后，正文占满空出来的宽度 */
-    body.sb-left-hidden .column-main,
-    body.sb-right-hidden .column-main {
-        flex: 1 1 auto;
-        width: auto;
-        max-width: none;
     }
 }
 
