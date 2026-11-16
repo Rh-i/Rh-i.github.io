@@ -206,8 +206,8 @@ comment:
 # Disabled.
 # Share plugin configurations
 # https://ppoffice.github.io/hexo-theme-icarus/categories/Plugins/Share/
-share:
-    type: addtoany
+# 分享按钮已关闭：不配置 share 段即可。
+# 主题的 share.jsx 判断 !share 时直接不渲染，留 null / type: null 都会触发 schema 警告。
 # Sidebar configurations.
 # Please be noted that a sidebar is only visible when it has at least one widget
 sidebar:
@@ -249,16 +249,14 @@ widgets:
             QQ:
                 icon: fab fa-qq
                 url: "#"
-            RSS:
-                icon: fas fa-rss
-                url: /atom.xml
     # Table of contents widget configurations
     -
         # Where should the widget be placed, left sidebar or right sidebar
         position: left
         type: toc
         # Whether to show the index of each heading
-        index: true
+        # 标题本身已由 scripts/heading-number.js 带上序号，这里关掉避免出现 "1 1. 标题"
+        index: false
         # Whether to collapse sub-headings when they are out-of-view
         collapsed: true
         # Maximum level of headings to show (1-6)

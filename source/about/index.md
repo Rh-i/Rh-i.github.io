@@ -3,6 +3,9 @@ title: 关于
 layout: page
 comments: false
 ---
+
+## 关于我
+
 我是 **Rh-i**，主要方向是嵌入式软件：
 
 - 嵌入式 C++ / FreeRTOS / RTOS 抽象层
@@ -10,6 +13,8 @@ comments: false
 - Linux 驱动、构建与工具链折腾
 
 这里记录踩过的坑和一些实现思路。
+
+## 联系我
 
 - GitHub：[https://github.com/Rh-i](https://github.com/Rh-i)
 - 有事可以直接开 issue 找我。
