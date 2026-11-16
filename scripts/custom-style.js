@@ -211,17 +211,11 @@ body > .navbar {
     z-index: 100;
 }
 
-/* 侧栏吸附点往下让出导航栏高度，不然展开时顶部内容会被导航栏遮住 */
+/* 侧栏吸附点往下让出导航栏高度，不然展开时顶部内容会被导航栏遮住。
+   导航栏在任意宽度下都只有一行（约 59px），所以一个值就够 */
 body .column-left.is-sticky,
 body .column-right.is-sticky {
     top: 4.75rem;
-}
-
-@media screen and (max-width: 1023px) {
-    body .column-left.is-sticky,
-    body .column-right.is-sticky {
-        top: 8.5rem;
-    }
 }
 
 /* 导航栏盖住锚点位置，跳转后标题会被遮住一半，给标题留出导航栏的高度。
@@ -230,10 +224,40 @@ body .column-right.is-sticky {
     scroll-margin-top: 4.6rem !important;
 }
 
-/* 窄屏导航栏是两行（logo + 菜单），比桌面高一倍 */
-@media screen and (max-width: 1023px) {
-    .column-main .content :is(h1, h2, h3, h4, h5, h6) {
-        scroll-margin-top: 8.4rem !important;
+/* 窄屏导航栏原本是两行：logo 居中占一行，菜单另起一行。
+   这里把容器改成单行 flex —— logo 靠左、菜单靠右，整体只占一行高度，
+   竖向空间省一半，锚点补偿也就不用按两行去留了 */
+@media screen and (max-width: 1024px) {
+    body > .navbar .navbar-container {
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: .5rem;
+    }
+
+    body > .navbar .navbar-brand {
+        flex: 0 0 auto;
+        width: auto;
+        justify-content: flex-start;
+    }
+
+    body > .navbar .navbar-menu {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+        justify-content: flex-end;
+        margin-left: auto;
+    }
+
+    /* 菜单项放不下时在内部横向滑动，不要把导航栏重新撑成两行 */
+    body > .navbar .navbar-start {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    body > .navbar .navbar-start::-webkit-scrollbar {
+        display: none;
     }
 }
 

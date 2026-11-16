@@ -6,7 +6,8 @@
  * 左右侧边栏开关：两个贴边的小按钮，点击收起/展开对应侧栏，默认全部展开。
  *
  * 状态存在 localStorage（'1' = 展开，'0' = 收起），刷新后保持。
- * 按钮只在 1024px 以上显示，并且只在对应侧栏确实存在时出现。
+ * 768px 以上才给按钮（手机上侧栏是直接堆在文意上方的，收起它反而奇怪）；
+ * 且手机上会强制展开，避免在宽屏收起了左栏、缩窄后没有按钮可以找回来。
  * 收起后正文列用 flex 撑满剩余宽度（配合 custom-style.js 里 300px 定宽侧栏的设定）。
  */
 const style = `<style id="site-sidebar-toggle-style">
@@ -71,7 +72,9 @@ body.sb-right-hidden .column-main {
     max-width: none;
 }
 
-@media screen and (min-width: 1024px) {
+/* 只有 768px 以上才给按钮。
+   手机宽度下左栏就是页面顶部的卡片区，收起它既省不了空间也不好看 */
+@media screen and (min-width: 768px) {
     .sb-toggle.is-visible {
         display: flex;
     }
@@ -179,13 +182,32 @@ const script = `<script id="site-sidebar-toggle">
         return !!el && el.offsetWidth > 0;
     }
 
+    // 手机宽度：侧栏是堆在正文上方的卡片，没有“收起”这个概念
+    function isNarrow() {
+        return window.matchMedia('(max-width: 767px)').matches;
+    }
+
+    // 右栏是不是"当前看不到"：要么手动收起了，要么被主题的响应式规则 display:none 了
+    // （手机宽度下就是这种），两种情况都应该把卡片搬进左栏，否则手机上分类/归档/
+    // 标签/贡献日历 永远看不到，「更多」也就成了摆设
+    function rightCollapsed() {
+        if (isHidden(RIGHT)) {
+            return true;
+        }
+        var right = document.querySelector('.column-right');
+        return !!right && right.offsetWidth === 0;
+    }
+
     function apply() {
-        var hiddenLeft = isHidden(LEFT);
+        // 手机上永远按"展开"处理：否则在宽屏收起左栏后把窗口缩窄，
+        // 按钮没了、左栏也回不来，看起来就像坏了
+        var narrow = isNarrow();
+        var hiddenLeft = isHidden(LEFT) && !narrow;
         var hiddenRight = isHidden(RIGHT);
         document.body.classList.toggle('sb-left-hidden', hiddenLeft);
         document.body.classList.toggle('sb-right-hidden', hiddenRight);
 
-        migrateRight(hiddenRight);
+        migrateRight(rightCollapsed());
 
         var leftBtn = document.getElementById('sb-toggle-left');
         var rightBtn = document.getElementById('sb-toggle-right');
@@ -201,7 +223,8 @@ const script = `<script id="site-sidebar-toggle">
 
     // 右侧卡片搬进左栏时，用它和"本来就在左边"的卡片隔开。
     // 中间是可点击的胶囊：点一下把搬过来的卡片收起来，再点展开。
-    // 只在桌面宽度这么做：手机上两栏本来就是堆叠的，搬过去只会让页面更长
+    // 任何宽度都允许搬运 —— 只要右栏处于折叠状态就把卡片挪过来，
+    // 保证「更多」这个开关在所有尺寸下都可用
     function migrateRight(hidden) {
         var left = document.querySelector('.column-left');
         var right = document.querySelector('.column-right');
@@ -210,7 +233,7 @@ const script = `<script id="site-sidebar-toggle">
         }
 
         var marker = document.getElementById('sb-split-marker');
-        var canMigrate = hidden && window.matchMedia('(min-width: 1024px)').matches;
+        var canMigrate = hidden;
 
         if (canMigrate) {
             if (marker) {
@@ -272,7 +295,7 @@ const script = `<script id="site-sidebar-toggle">
             leftBtn.classList.toggle('is-visible', !!left);
         }
         if (rightBtn) {
-            rightBtn.classList.toggle('is-visible', visible(right) || isHidden(RIGHT));
+            rightBtn.classList.toggle('is-visible', !isNarrow() && (visible(right) || isHidden(RIGHT)));
         }
     }
 
@@ -321,8 +344,8 @@ const script = `<script id="site-sidebar-toggle">
         window.addEventListener('resize', function () {
             clearTimeout(timer);
             timer = setTimeout(function () {
-                // 窗口缩到手机宽度时要把搬过去的卡片还原，否则右栏虽然被 CSS 隐藏，
-                // 卡片却还留在左栏里，手机页面会莫名其妙变长
+                // 宽度变了右栏的可见性也跟着变（桌面 → 手机），
+                // 卡片该搬的搬、该还的还，按钮显隐也要重新同步
                 apply();
                 syncVisibility();
             }, 120);
