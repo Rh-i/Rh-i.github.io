@@ -141,15 +141,33 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > blockq
     min-width: 0;
 }
 
-/* 元信息单独划成一个浅色小条：浅底 + 圆角 + 内边距，
-   和下方标题之间留出明显间距，不再是一行小字直接贴在标题上方。
-   主题原规则是 article.article .article-meta（特异性 0,2,1），
-   这里必须带 body 才能压过去 */
+/* 标题提到最前。主题把元信息放在标题前面，小字压在 28px 标题上方很别扭；
+   卡片内容改成纵向 flex 后，只给 h1 一个负 order，其余子元素顺序不变。
+   用 :has 限定「含 h1 的卡片」，首页列表页（标题是 h2）不受影响 */
+.article.card-content:has(> h1) {
+    display: flex;
+    flex-direction: column;
+}
+
+.article.card-content:has(> h1) > h1 {
+    order: -1;
+}
+
+/* 元信息落到标题和正文之间，直接沿用「关键字」引用块的视觉语言：
+   浅灰底 + 左侧竖条 + 小圆角，两块挨在一起像同一组信息
+   主题原规则是 article.article .article-meta（特异性 0,2,1），要带 body 才压得过 */
 body .article-meta.level {
-    margin: 0 0 1.25rem;
-    padding: .5rem .875rem;
-    border-radius: .5rem;
+    margin: 0;
+    padding: .6rem .875rem;
+    border-left: 4px solid rgba(128, 128, 128, .3);
+    border-radius: 4px;
     background: rgba(128, 128, 128, .1);
+}
+
+/* 紧跟着的「关键字」引用块原本有 20px 上边距，会把两组信息拆开，
+   这里收窄到 8px，让元信息条和关键字块看起来是同一组 */
+.article.card-content:has(> h1) > .content > blockquote:first-child {
+    margin-top: .5rem;
 }
 
 /* TOC 卡片标题：主题语言包里写的是「目录」，和左栏的
