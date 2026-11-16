@@ -20,7 +20,8 @@
  *   5. 按钮排：目录全部展开/收起、分类标签收起/展开，状态存 localStorage
  *   6. 右栏：最新文章排到最后；标题态按可用高度裁剪，阅读态整张展开
  *
- * 只处理有目录的页面（文章页）；首页、归档页没有 #toc，不会加 has-toc。
+ * 布局（三栏等高、正文列自己滚）对任何有 .column-main 的页面生效；
+ * 阅读态那套左栏切换只对文章页（有 #toc）生效。
  */
 
 const style = `<style id="site-reading-toc">
@@ -48,6 +49,12 @@ body .column-left > .widget[data-type="toc"] > .toc-tools {
     transform: scaleX(0);
     transform-origin: 0 50%;
     pointer-events: none;
+}
+
+/* 折叠右栏后搬过来的卡片中间那条「更多」隔断：新的三栏布局里卡片高度由脚本
+   撑满 / 裁剪，这条隔断既拉不高也收不起，在窄窗口里只会被拉成一根长条，所以不显示 */
+body.col-scroll .column-left > .sb-split {
+    display: none !important;
 }
 
 @media screen and (min-width: 769px) {
@@ -131,8 +138,8 @@ body .column-left > .widget[data-type="toc"] > .toc-tools {
        10.25rem = 上留白 42 + 顶栏 59 + 下留白 42。三栏用同一个高度，
        底边自然对齐；页面本身也正好一屏，窗口再矮也不会出现“两侧跟着滚”。
        内容放不下时：右栏由脚本裁剪，左栏自己内部滚（拖动条隐藏） */
-    body.has-toc .column-left,
-    body.has-toc .column-right {
+    body.col-scroll .column-left,
+    body.col-scroll .column-right {
         display: flex;
         flex-direction: column;
         height: calc(100vh - 10.25rem);
@@ -142,8 +149,8 @@ body .column-left > .widget[data-type="toc"] > .toc-tools {
     }
 
     /* 卡片不许被压缩：内容多时宁可溢出（由脚本裁剪）也不要挤扁 */
-    body.has-toc .column-left > *,
-    body.has-toc .column-right > * {
+    body.col-scroll .column-left > *,
+    body.col-scroll .column-right > * {
         flex: 0 0 auto;
     }
 
@@ -198,7 +205,7 @@ body .column-left > .widget[data-type="toc"] > .toc-tools {
        这样 scrollbar 只占 91 ~ 1480 这一段，上下都离屏幕边缘有距离，
        而且评论卡片也在这条滚动区域里，滚到底就能看见，不会出现
        「两张卡片互相让位、评论永远够不着」那种毛病 */
-    body.has-toc .column-main {
+    body.col-scroll .column-main {
         position: sticky;
         top: 6.5rem;
         /* 高度和左右两栏一致，底边自然对齐 */
@@ -214,16 +221,16 @@ body .column-left > .widget[data-type="toc"] > .toc-tools {
         scrollbar-color: rgba(128, 128, 128, .35) transparent;
     }
 
-    body.has-toc .column-main::-webkit-scrollbar {
+    body.col-scroll .column-main::-webkit-scrollbar {
         width: 8px;
     }
 
-    body.has-toc .column-main::-webkit-scrollbar-thumb {
+    body.col-scroll .column-main::-webkit-scrollbar-thumb {
         background: rgba(128, 128, 128, .35);
         border-radius: 4px;
     }
 
-    body.has-toc .column-main::-webkit-scrollbar-track {
+    body.col-scroll .column-main::-webkit-scrollbar-track {
         background: transparent;
     }
 
@@ -298,7 +305,7 @@ const script = `<script id="site-reading-toc-script">
 
         /* 正文那列的「固定高度 + 自己滚」样式靠这个类生效，
            脚本一解析就加上，避免首屏闪一下 */
-        body.classList.toggle('has-toc', !!el.toc);
+        body.classList.toggle('col-scroll', !!el.main);
 
         if (!el.bar) {
             el.bar = document.createElement('div');
@@ -320,10 +327,15 @@ const script = `<script id="site-reading-toc-script">
         line = Math.max(160, card.getBoundingClientRect().top + window.pageYOffset - 96);
     }
 
+    /* 正文列是否已经作为滚动容器（桌面档的所有页面都是） */
+    function mainScrolls() {
+        return WIDE.matches && body.classList.contains('col-scroll') && !!el.main;
+    }
+
     /* ── 顶部阅读进度条 ────────────────────────────
        主题自带的 Pace 只认页面加载：文章页的滚动其实发生在 .column-main
        里，它量不到，还会被评论组件拖住卡在某个百分比。
-       所以 _config.icarus.yml 里 progressbar 关掉，这里按「正文滚了多少」
+       所以 _config.icarus.yml 里 progressbar 关掉，这里按「正文列滚了多少」
        自己画一条（手机上退化成整页进度） */
     function updateProgress() {
         if (!el.bar) {
@@ -331,7 +343,7 @@ const script = `<script id="site-reading-toc-script">
         }
 
         var done;
-        if (el.toc && WIDE.matches && el.main) {
+        if (mainScrolls()) {
             var room = el.main.scrollHeight - el.main.clientHeight;
             done = room > 0 ? el.main.scrollTop / room : 0;
         } else {
@@ -342,9 +354,9 @@ const script = `<script id="site-reading-toc-script">
         el.bar.style.transform = 'scaleX(' + Math.max(0, Math.min(1, done)).toFixed(4) + ')';
     }
 
-    /* 正文当前位置：桌面档看正文列的 scrollTop，手机档看页面 */
+    /* 当前位置：桌面档看正文列的 scrollTop，手机档看页面 */
     function scrollPos() {
-        return el.toc && WIDE.matches && el.main ? el.main.scrollTop : window.pageYOffset;
+        return mainScrolls() ? el.main.scrollTop : window.pageYOffset;
     }
 
     /* ── 阅读态：进 / 出各用一个阈值，临界点上下小幅滚动不会来回抖 ── */
@@ -535,10 +547,20 @@ const script = `<script id="site-reading-toc-script">
         moveRecentToEnd();
         resetColumn(el.left);
         resetColumn(el.right);
+
+        /* 「更多」隔断已被隐藏，就别让搬过来的卡片停在收起状态，
+           否则它们再没有入口可以展开（高度不够时由 trimColumn 负责收） */
+        var split = el.left && el.left.querySelector('.sb-split');
+        if (split && split.classList.contains('is-collapsed')) {
+            split.classList.remove('is-collapsed');
+            split.setAttribute('aria-expanded', 'true');
+        }
+
         fitRightColumn();
 
-        /* 阅读态左栏本来就该自己滚，不当它是“放不下” */
-        if (!isReading()) {
+        /* 阅读态左栏本来就该自己滚，不当它是“放不下”；
+           手机档栏高不固定、页面还能滚，也不裁卡片 */
+        if (!isReading() && WIDE.matches) {
             trimColumn(el.right);
             trimColumn(el.left);
         }
@@ -811,7 +833,7 @@ const script = `<script id="site-reading-toc-script">
     document.addEventListener('pjax:complete', init);
 
     /* 脚本挂在 body 末尾，内容此时已经解析完；
-       先缓存一次，让 has-toc 在首屏绘制前就生效 */
+       先缓存一次，让 col-scroll 在首屏绘制前就生效 */
     cache();
 }());
 </script>`;
