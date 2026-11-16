@@ -144,11 +144,6 @@ body.sb-left-hidden .sb-toggle-bottom-arrow {
     .sb-toggle-bottom.is-visible {
         display: flex;
     }
-
-    /* 胶囊固定在底部，给页面留出一条不被遮住的空间 */
-    body {
-        padding-bottom: calc(3.75rem + env(safe-area-inset-bottom, 0px));
-    }
 }
 
 /* 右侧卡片搬进左栏时，用它和"本来就在左边"的卡片隔开。
@@ -290,12 +285,11 @@ const script = `<script id="site-sidebar-toggle">
 
         var bottomBtn = document.getElementById('sb-toggle-bottom');
         if (bottomBtn) {
-            // 竖屏时这块内容排在正文下方，叫「侧栏」名不副实，
-            // 用和正文里那条隔断一致的说法：更多
+            // 竖屏时这块内容是排在正文下方的卡片区，叫「侧栏」名不副实
             bottomBtn.setAttribute('aria-expanded', hiddenLeft ? 'false' : 'true');
-            bottomBtn.setAttribute('aria-label', hiddenLeft ? '展开更多' : '收起更多');
+            bottomBtn.setAttribute('aria-label', hiddenLeft ? '展开介绍卡片' : '收起介绍卡片');
             bottomBtn.innerHTML = '<span>' +
-                (hiddenLeft ? '展开更多' : '收起更多') +
+                (hiddenLeft ? '展开介绍卡片' : '收起介绍卡片') +
                 '</span><span class="sb-toggle-bottom-arrow">&#9662;</span>';
         }
     }

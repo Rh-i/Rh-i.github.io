@@ -224,42 +224,59 @@ body .column-right.is-sticky {
     scroll-margin-top: 4.6rem !important;
 }
 
-/* 窄屏导航栏原本是两行：logo 居中占一行，菜单另起一行。
-   这里把容器改成单行 flex —— logo 靠左、菜单靠右，整体只占一行高度，
-   竖向空间省一半，锚点补偿也就不用按两行去留了 */
-@media screen and (max-width: 1024px) {
-    body > .navbar .navbar-container {
-        display: flex;
-        align-items: center;
-        flex-wrap: nowrap;
-        gap: .5rem;
-    }
-
-    body > .navbar .navbar-brand {
-        flex: 0 0 auto;
-        width: auto;
-        justify-content: flex-start;
-    }
-
-    body > .navbar .navbar-menu {
-        flex: 1 1 auto;
-        width: auto;
-        min-width: 0;
-        justify-content: flex-end;
-        margin-left: auto;
-    }
-
-    /* 菜单项放不下时在内部横向滑动，不要把导航栏重新撑成两行 */
-    body > .navbar .navbar-start {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        scrollbar-width: none;
-    }
-
-    body > .navbar .navbar-start::-webkit-scrollbar {
-        display: none;
-    }
+/* 导航栏全宽度统一成一种布局，永远只有一行：
+     左边 = logo + 菜单文字（主页/归档/分类/标签/关于）
+     右边 = GitHub / 日夜切换 等图标
+   主题自己在 1025~1099 会临时摊成两行、1024 以下又变回一行，
+   拖动窗口时就会「左右横跳」，所以这里不设断点，所有尺寸共用一套规则。
+   宽度真的放不下时（约 530px）主题自己会把菜单文字收进汉堡按钮，
+   那是唯一一处变化，也正好发生在文字和图标要撞上的时候 */
+body > .navbar .navbar-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: .5rem;
 }
+
+body > .navbar .navbar-brand {
+    flex: 0 0 auto;
+    width: auto;
+    justify-content: flex-start;
+}
+
+/* 菜单区吃掉剩余宽度：start 靠左紧贴 logo，end 顶到最右边。
+   注意这里**不能**给 start / menu 写 min-width: 0：
+   主题靠「scrollWidth > clientWidth」判断要不要收进汉堡按钮，
+   一旦允许 flex 收缩到内容以下，文字会先互相压住、却检测不到溢出，
+   于是要等到 400px 才折叠。保持默认的 min-width:auto，
+   放不下时容器立刻被判为溢出，刚好在文字要撞上图标的那一刻收起 */
+body > .navbar .navbar-menu {
+    flex: 1 1 auto;
+    width: auto;
+    margin-left: 0;
+}
+
+body > .navbar .navbar-start {
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+}
+
+body > .navbar .navbar-end {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+}
+
+/* 菜单项自己不许被压窄：中文的 min-content 只有一个字宽，
+   允许收缩的话文字会先互相压住而不触发「溢出」检测，
+   要等到很窄才折叠。锁死宽度后，一放不下容器就被判溢出 */
+body > .navbar .navbar-start > .navbar-item,
+body > .navbar .navbar-end > .navbar-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
 
 /* TOC 卡片标题：主题语言包里写的是「目录」，和左栏的
    「本文分类 / 本文标签」不成体系，这里改成「本文目录」。
