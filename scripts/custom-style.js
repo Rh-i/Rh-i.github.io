@@ -485,6 +485,12 @@ body .section {
     padding-right: 0;
 }
 
+/* 全站无底栏：主题的 footer 没有开关（footer.jsx 总是渲染），
+   直接用 display:none 拿掉，不占位也不留空白 */
+body .footer {
+    display: none;
+}
+
 body:is(.is-1-column, .is-2-column, .is-3-column) .container {
     max-width: calc(100% - 2 * var(--site-gutter));
 }

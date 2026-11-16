@@ -197,13 +197,6 @@ body .column-left > .toc-tools {
         background: transparent;
     }
 
-    /* 阅读态页脚收起来：不收起的话页面本身就比视口高，
-       最右边还会多出一条贯通上下的拖动条，跟正文列那条打架；
-       退出阅读态（滚回顶部）页脚自动回来 */
-    body.is-reading .footer {
-        display: none;
-    }
-
     /* 目录内部不要任何过渡：切换高亮时主题会给 <ul> 加类名，
        若带 transition: all 就会连着布局一起动画，点条目时看着卡 */
     body .column-left > .widget[data-type="toc"],
