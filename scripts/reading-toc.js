@@ -3,21 +3,24 @@
 'use strict';
 
 /**
- * 阅读态：开始读正文以后，把左栏的介绍卡片收起来，让目录顶上并跟着滚动。
+ * 文章页的两个状态：
+ *   · 标题态（正文还没开始滚）：左栏 = 简介 + 本文分类 + 本文标签（不显示目录）
+ *   · 阅读态（正文开始滚）：左栏 = 目录 + 按钮排 + 本文分类 + 本文标签
  *
- * 起因：左栏从上到下是「简介 + 本文分类 + 本文标签 + 本文目录」，
- * 光简介卡片就占了大半屏，整个左栏比视口还高；左栏是 is-sticky 吸附的，
- * 比视口高的吸附元素底部永远露不出来 —— 于是正文读到哪里，目录都还在屏幕外，
- * 看着就像「目录不跟着正文走」。
+ * 起因：左栏原本「简介 + 分类 + 标签 + 目录」堆在一起，比视口还高；
+ * 左栏是 is-sticky 吸附的，比视口高的吸附元素底部永远露不出来，
+ * 于是正文读到哪里，目录都还在屏幕外。
  *
- * 做法：
- *   1. 正文进入视口（滚过标题区）时给 body 加 .is-reading
- *   2. 文章顶部：左栏只留 简介 / 本文分类 / 本文标签，目录不显示；
- *      进入阅读态：左栏换成 目录 / 按钮 / 本文分类 / 本文标签（顺序固定）
- *   3. 目录卡片自己有 max-height + overflow，长目录在卡片内部滚动；
- *      主题的 main.js 会把高亮项滚到卡片中间（它找的就是这个可滚动容器）
+ * 结构：
+ *   1. 样式：左/右/中三栏的尺寸与排序全部写在这里，不碰主题源码
+ *   2. 滚动：正文那一列（.column-main）自己滚，滚动条只在卡片区内；
+ *      顶部进度条按它滚了多少画（updateProgress）
+ *   3. 阅读态：body.is-reading 由正文滚动量决定（apply）
+ *   4. 目录：点条目瞬时跳转 + 高亮锁定，不用主题的平滑滚动
+ *   5. 按钮排：目录全部展开/收起、分类标签收起/展开，状态存 localStorage
+ *   6. 右栏：最新文章排到最后；标题态按可用高度裁剪，阅读态整张展开
  *
- * 只处理有目录的页面（文章页），首页、归档页没有 #toc，不加这个类。
+ * 只处理有目录的页面（文章页）；首页、归档页没有 #toc，不会加 has-toc。
  */
 
 const style = `<style id="site-reading-toc">
@@ -31,6 +34,20 @@ html {
    只在桌面档的阅读态出现：手机上目录是浮层，用不上 */
 body .column-left > .toc-tools {
     display: none;
+}
+
+/* 顶部阅读进度条（替掉主题那条只会卡住的载入进度条，见脚本 updateProgress） */
+.site-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    z-index: 2000;
+    background: #3273dc;
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    pointer-events: none;
 }
 
 @media screen and (min-width: 769px) {
@@ -99,26 +116,39 @@ body .column-left > .toc-tools {
         order: 3;
     }
 
-    /* 「本文分类」「本文标签」永远排在目录上面，不参与排序。
-       默认展开，只有阅读态里点了按钮才收起 —— 收起不能跨到页面顶部生效：
-       按钮只在阅读态出现，顶部如果把卡片藏了，就再也点不回来了 */
+    /* 「本文分类」「本文标签」默认展开，只有阅读态里点了按钮才收起。
+       收起只在阅读态生效：按钮只在那里出现，标题态把卡片藏了就再也点不回来 */
     body.is-reading.meta-hidden .column-left > .post-meta-widget {
         display: none;
     }
 
-    /* ── 阅读态：左栏压进一屏，只给目录和那个按钮 ────────────
-       目录 flex 撑满剩余高度：分类/标签收起时它顶满整栏；
-       展开分类/标签后目录自动缩回去，两者加起来也正好占满。
-       「更多」那组搬过来的卡片在阅读时不需要，先藏起来 */
-    body.is-reading .column-left {
+    /* ── 三栏等高，整页正好一屏（不外滚）────────────────────
+       10.25rem = 上留白 42 + 顶栏 59 + 下留白 42。三栏用同一个高度，
+       底边自然对齐；页面本身也正好一屏，窗口再矮也不会出现“两侧跟着滚”。
+       内容放不下时：右栏由脚本裁剪，左栏自己内部滚（拖动条隐藏） */
+    body.has-toc .column-left,
+    body.has-toc .column-right {
         display: flex;
         flex-direction: column;
-        /* 必须给确定高度：只写 max-height 时容器高度跟着内容走，
-           flex: 1 没有剩余空间可分，目录就撑不满整栏。
-           100vh - 6.5rem(吸附点) - 2.25rem(底部留白) —— 上下两边留白一样，
-           不会出现“侧栏顶着屏幕底、另一侧留一大块” */
-        height: calc(100vh - 8.75rem);
-        max-height: calc(100vh - 8.75rem);
+        height: calc(100vh - 10.25rem);
+        max-height: calc(100vh - 10.25rem);
+        overflow: hidden;
+        padding-bottom: 0;
+    }
+
+    /* 卡片不许被压缩：内容多时宁可溢出（由脚本裁剪）也不要挤扁 */
+    body.has-toc .column-left > *,
+    body.has-toc .column-right > * {
+        flex: 0 0 auto;
+    }
+
+    /* ── 阅读态：左栏压进一屏，只给目录和那排按钮 ──────────
+       目录 flex 撑满剩余高度：分类/标签收起时它顶满整栏；
+       展开分类/标签后目录自动缩回去，两者加起来也正好占满 */
+    body.is-reading .column-left {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
     }
 
     body.is-reading .column-left > .widget:not([data-type="toc"]) {
@@ -145,19 +175,8 @@ body .column-left > .toc-tools {
         display: none !important;
     }
 
-    /* 右侧栏卡片多的时候比视口还高，粘住后底部永远看不见。
-       用确定高度（不是 max-height）：内容少时也把框拉到同样的高度，
-       这样左右两栏底边齐平，不会一个顶到底、一个差一大块 */
+    /* 阅读态右栏内容超出时整栏自己滚（拖动条隐藏） */
     body.is-reading .column-right.is-sticky {
-        height: calc(100vh - 8.75rem);
-        max-height: calc(100vh - 8.75rem);
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        scrollbar-width: none;
-    }
-
-    /* 左右两栏各滚各的，但不显示拖动条（拖动条只留给正文那一列） */
-    body.is-reading .column-left {
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-width: none;
@@ -177,8 +196,10 @@ body .column-left > .toc-tools {
     body.has-toc .column-main {
         position: sticky;
         top: 6.5rem;
-        height: calc(100vh - 8.75rem);
-        max-height: calc(100vh - 8.75rem);
+        /* 和左右两栏同高、同样从 101 开始，卡片留 .75rem 内边距后
+           三栏卡片顶边、底边都在同一条线上 */
+        height: calc(100vh - 10.25rem);
+        max-height: calc(100vh - 10.25rem);
         overflow-y: auto;
         scrollbar-width: thin;
         scrollbar-color: rgba(128, 128, 128, .35) transparent;
@@ -230,78 +251,119 @@ body .column-left > .toc-tools {
 const script = `<script id="site-reading-toc-script">
 (function () {
     var body = document.body;
-    var line = 240;   /* 手机上正文标题区滚过的位置，load / resize / pjax 时重算 */
 
-    /* 有目录的页面（文章页）立刻打上标记：正文那一列的「固定高度 + 自己滚」
-       样式靠它生效，越早加上越不会闪一下 */
-    function markTocPage() {
-        if (document.getElementById('toc')) {
-            body.classList.add('has-toc');
-        } else {
-            body.classList.remove('has-toc');
+    /* 桌面档才有「正文列自己滚」那套样式（见上面的 media query）；
+       手机档没有，仍然看页面滚动 */
+    var WIDE = window.matchMedia('(min-width: 769px)');
+
+    var META_STATE = 'blog.left.meta.state.v2';   /* 本文分类 / 本文标签 收起状态 */
+    var TOC_STATE = 'blog.toc.state';             /* 目录是否只留一级 */
+
+    /* localStorage 读写统一走这两个：隐私模式下会抛异常，直接吞掉 */
+    function stored(key) {
+        try {
+            return window.localStorage.getItem(key);
+        } catch (e) {
+            return null;
         }
     }
 
-    markTocPage();
+    function store(key, value) {
+        try {
+            window.localStorage.setItem(key, value);
+        } catch (e) {
+            /* 隐私模式忽略 */
+        }
+    }
+
+    /* ── 元素缓存 ──────────────────────────────────
+       pjax 会整块换掉 DOM，init 时重新取一次；滚动回调里不再查 DOM */
+    var el = { main: null, left: null, right: null, toc: null, bar: null };
+    var line = 240;    /* 手机档：正文标题区滚过多少像素算开读 */
+
+    function cache() {
+        el.main = document.querySelector('.column-main');
+        el.left = document.querySelector('.column-left');
+        el.right = document.querySelector('.column-right');
+        el.toc = document.getElementById('toc');
+
+        /* 正文那列的「固定高度 + 自己滚」样式靠这个类生效，
+           脚本一解析就加上，避免首屏闪一下 */
+        body.classList.toggle('has-toc', !!el.toc);
+
+        if (!el.bar) {
+            el.bar = document.createElement('div');
+            el.bar.className = 'site-progress';
+            body.appendChild(el.bar);
+        }
+    }
+
+    function isReading() {
+        return body.classList.contains('is-reading');
+    }
 
     function measure() {
-        var card = document.querySelector('.column-main .article');
+        var card = el.main && el.main.querySelector('.article');
         if (!card) {
             line = 240;
             return;
         }
-        var top = card.getBoundingClientRect().top + window.pageYOffset;
-        line = Math.max(160, top - 96);
+        line = Math.max(160, card.getBoundingClientRect().top + window.pageYOffset - 96);
     }
 
-    /* 桌面档下正文列自己滚（.column-main 是 sticky 的滚动容器），
-       所以用它的 scrollTop 判断是不是已经开读；
-       手机档没有那套样式，仍然看页面滚动 */
-    function wide() {
-        return window.matchMedia('(min-width: 769px)').matches;
-    }
-
-    function mainScroller() {
-        return document.querySelector('.column-main');
-    }
-
-    /* 进入阅读态时右栏变成固定高度、自己滚（拖动条隐藏），
-       上一次可能停在半路 —— 这里统一把它滑回最上面 */
-    function resetRightScroll() {
-        var right = document.querySelector('.column-right');
-        if (right) {
-            right.scrollTop = 0;
-        }
-    }
-
-    /* 进 / 出各用一个阈值：在临界点上下小幅滚动时不会来回切布局 */
-    function apply() {
-        /* 没有目录的页面（首页 / 归档 / 标签…）不进入阅读态 */
-        if (!document.getElementById('toc')) {
-            if (body.classList.contains('is-reading')) {
-                body.classList.remove('is-reading');
-            }
+    /* ── 顶部阅读进度条 ────────────────────────────
+       主题自带的 Pace 只认页面加载：文章页的滚动其实发生在 .column-main
+       里，它量不到，还会被评论组件拖住卡在某个百分比。
+       所以 _config.icarus.yml 里 progressbar 关掉，这里按「正文滚了多少」
+       自己画一条（手机上退化成整页进度） */
+    function updateProgress() {
+        if (!el.bar) {
             return;
         }
 
-        var box = mainScroller();
-        var inner = box ? box.scrollTop : 0;
-        var isWide = wide();
-        var pos = isWide ? inner : window.pageYOffset;
-        var reading = body.classList.contains('is-reading');
+        var done;
+        if (el.toc && WIDE.matches && el.main) {
+            var room = el.main.scrollHeight - el.main.clientHeight;
+            done = room > 0 ? el.main.scrollTop / room : 0;
+        } else {
+            var pageRoom = document.documentElement.scrollHeight - window.innerHeight;
+            done = pageRoom > 0 ? window.pageYOffset / pageRoom : 0;
+        }
+
+        el.bar.style.transform = 'scaleX(' + Math.max(0, Math.min(1, done)).toFixed(4) + ')';
+    }
+
+    /* 正文当前位置：桌面档看正文列的 scrollTop，手机档看页面 */
+    function scrollPos() {
+        return el.toc && WIDE.matches && el.main ? el.main.scrollTop : window.pageYOffset;
+    }
+
+    /* ── 阅读态：进 / 出各用一个阈值，临界点上下小幅滚动不会来回抖 ── */
+    function apply() {
+        /* 没有目录的页面（首页 / 归档 / 标签…）永远不进阅读态 */
+        if (!el.toc) {
+            body.classList.remove('is-reading');
+            return;
+        }
+
+        var pos = scrollPos();
+        var reading = isReading();
         var want = reading
-            ? pos > 8
-            : pos > (isWide ? 48 : line);
+            ? pos > 8                       /* 快滚回最上面才退出 */
+            : pos > (WIDE.matches ? 48 : line);
 
         if (want === reading) {
             return;
         }
 
         body.classList.toggle('is-reading', want);
-        if (want) {
-            resetRightScroll();
+
+        if (want && el.right) {
+            /* 阅读态右栏固定高度、自己滚（拖动条隐藏），进来要回到最上面 */
+            el.right.scrollTop = 0;
         }
-        fitRightColumn();
+
+        layoutColumns();
     }
 
     /* ── 右栏要塞进一屏（只在标题态）────────────────────────────
@@ -310,32 +372,78 @@ const script = `<script id="site-reading-toc-script">
        阅读态不裁——最新文章已经排在右栏最下面，整张展开只会往下长，
        上面的分类 / 归档 / 标签 / 日历位置完全不变，跟标题态一模一样；
        多出来的部分交给右栏自己滚（拖动条已隐藏） */
-    /* 「最新文章」是最长的一张，放到右栏最下面：
-       万一真的放不下，被挤出去的也是它自己，不会连累标签 / 日历 */
+    /* 「最新文章」是最长的一张，排到最下面：
+       万一放不下，被挤出去的也只是它自己，不会连累标签 / 日历 */
     function moveRecentToEnd() {
-        var right = document.querySelector('.column-right');
-        if (!right) {
+        if (!el.right) {
             return;
         }
-        var recent = right.querySelector('.widget[data-type="recent-posts"]');
-        if (recent && right.lastElementChild !== recent) {
-            right.appendChild(recent);
+        var recent = el.right.querySelector('.widget[data-type="recent-posts"]');
+        if (recent && el.right.lastElementChild !== recent) {
+            el.right.appendChild(recent);
+        }
+    }
+
+    /* ── 侧栏布局工具 ─────────────────────────────────
+       两栏共用：复位、量高度、往上收卡片 */
+    function resetColumn(col) {
+        if (!col) {
+            return;
+        }
+        var kids = col.children;
+        for (var i = 0; i < kids.length; i++) {
+            kids[i].style.flexGrow = '';
+            kids[i].style.display = '';
+        }
+    }
+
+    /* 整列放不放得下：看最后一张可见卡片的底边。
+       栏底 = 视口 - 42（下留白），再留 8px 余量 */
+    function columnFits(col) {
+        var limit = window.innerHeight - 50;
+        var kids = col.children;
+        for (var i = kids.length - 1; i >= 0; i--) {
+            if (kids[i].offsetHeight > 0) {
+                return kids[i].getBoundingClientRect().bottom <= limit;
+            }
+        }
+        return true;
+    }
+
+    /* 窗口太矮、整列塞不下时，从后往前收卡片（至少留第一张），
+       宁可少显示几张也不让整页 / 整栏滚起来 */
+    function trimColumn(col) {
+        if (!col) {
+            return;
+        }
+        var kids = col.children;
+        for (var i = kids.length - 1; i >= 1; i--) {
+            if (kids[i].offsetHeight <= 0) {
+                continue;
+            }
+            if (columnFits(col)) {
+                return;
+            }
+            kids[i].style.display = 'none';
         }
     }
 
     function fitRightColumn() {
-        var right = document.querySelector('.column-right');
-        if (!right) {
+        if (!el.right) {
             return;
         }
 
-        var recent = right.querySelector('.widget[data-type="recent-posts"]');
-        var calendar = right.querySelector('.widget[data-type="github_calendar"]');
+        var recent = el.right.querySelector('.widget[data-type="recent-posts"]');
+        var calendar = el.right.querySelector('.widget[data-type="github_calendar"]');
         var items = recent
             ? [].slice.call(recent.querySelectorAll('.card-content > article.media'))
             : [];
+        var kids = el.right.children;
 
-        /* 每次先从“全部显示”重算，pjax / 尺寸变化才不会越藏越多 */
+        /* 每次从“全部显示、不拉伸”重算，pjax / 改窗口大小才不会越藏越多 */
+        for (var k = 0; k < kids.length; k++) {
+            kids[k].style.flexGrow = '';
+        }
         items.forEach(function (item) {
             item.style.display = '';
         });
@@ -346,35 +454,27 @@ const script = `<script id="site-reading-toc-script">
             calendar.style.display = '';
         }
 
-        /* 阅读态：全部恢复成完整列表就收工（右栏固定高度 + 隐藏滚动条） */
-        if (body.classList.contains('is-reading')) {
+        /* 阅读态：恢复成完整列表就收工（多出来的交给右栏自己滚） */
+        if (isReading()) {
             return;
         }
 
-        /* “放不放得下”看最后一张可见卡片的底边，不看列元素 */
-        var limit = window.innerHeight - 24;
+        /* 放不放得下看最后一张可见卡片的底边（见 columnFits） */
         var fits = function () {
-            var kids = right.children;
-            var last = null;
-            for (var k = 0; k < kids.length; k++) {
-                if (kids[k].offsetHeight > 0) {
-                    last = kids[k];
-                }
-            }
-            return !last || last.getBoundingClientRect().bottom <= limit;
+            return columnFits(el.right);
         };
 
         if (fits()) {
             return;
         }
 
-        /* 「最新文章」只留最新一条；连这一条都放不下就把整张卡片收起来 */
-        for (var i = 1; i < items.length; i++) {
-            items[i].style.display = 'none';
-        }
-
-        if (fits()) {
-            return;
+        /* 放不下就一条条往下收：能显示几条显示几条（至少留一条），
+           再不行整张收起，最后收贡献日历 */
+        for (var j = items.length - 1; j >= 1; j--) {
+            items[j].style.display = 'none';
+            if (fits()) {
+                return;
+            }
         }
 
         if (recent) {
@@ -389,11 +489,52 @@ const script = `<script id="site-reading-toc-script">
         }
     }
 
-    function refresh() {
-        measure();
-        apply();
+    /* ── 三栏等高 ──────────────────────────────────────
+       正文列的高度卡着视口，左右两栏的内容往往短一截；
+       把最后一张可见卡片拉长，底边就和正文卡片对上了 */
+    function fillColumns() {
+        [el.left, el.right].forEach(function (col) {
+            if (!col) {
+                return;
+            }
+
+            var kids = col.children;
+            var last = null;
+            for (var i = 0; i < kids.length; i++) {
+                kids[i].style.flexGrow = '';
+                if (kids[i].offsetHeight > 0) {
+                    last = kids[i];
+                }
+            }
+
+            /* 阅读态左栏已经由目录 flex 撑满，不用再拉最后一张 */
+            if (col === el.left && isReading()) {
+                return;
+            }
+
+            if (last) {
+                last.style.flexGrow = '1';
+            }
+        });
+    }
+
+    /* ── 侧栏布局总入口 ────────────────────────────────
+       顺序不能乱：先复位（清掉上一次的隐藏和拉伸），再让右栏裁剪「最新文章」，
+       还不够就把两栏的卡片从后往前收，最后才让最后一张卡片吃掉剩余高度。
+       反过来做的话，被拉长的卡片永远“放得下”，裁剪就失效了 */
+    function layoutColumns() {
         moveRecentToEnd();
+        resetColumn(el.left);
+        resetColumn(el.right);
         fitRightColumn();
+
+        /* 阅读态左栏本来就该自己滚，不当它是“放不下” */
+        if (!isReading()) {
+            trimColumn(el.right);
+            trimColumn(el.left);
+        }
+
+        fillColumns();
     }
 
     /* ── 点目录跳转：直接跳过去，不要平滑滚动 ──────────────────
@@ -409,7 +550,7 @@ const script = `<script id="site-reading-toc-script">
        比常驻 MutationObserver 盯每一次类名变化便宜得多（那样会跟主题自己的
        观察器互相触发，点目录时明显卡一下） */
     function paint(link) {
-        var toc = document.getElementById('toc');
+        var toc = el.toc;
         if (!toc || !link || !toc.contains(link)) {
             return;
         }
@@ -484,9 +625,8 @@ const script = `<script id="site-reading-toc-script">
         /* 窄屏下目录是浮层（#toc.is-active + #toc-mask）：
            我们把点击拦下来了，主题的 toggleToc 不会执行，
            所以得自己把浮层关掉，否则会停在那层目录上不动 */
-        var tocEl = document.getElementById('toc');
-        if (tocEl && tocEl.classList.contains('is-active')) {
-            tocEl.classList.remove('is-active');
+        if (el.toc && el.toc.classList.contains('is-active')) {
+            el.toc.classList.remove('is-active');
             var maskEl = document.getElementById('toc-mask');
             if (maskEl) {
                 maskEl.classList.remove('is-active');
@@ -495,9 +635,11 @@ const script = `<script id="site-reading-toc-script">
 
         /* 先把阅读态定下来再滚动：否则滚动过程中简介卡片刚好被隐藏，
            左栏会重排一次，视觉上就是跳转时“抽一下” */
-        if (!body.classList.contains('is-reading')) {
+        if (!isReading()) {
             body.classList.add('is-reading');
-            resetRightScroll();
+            if (el.right) {
+                el.right.scrollTop = 0;
+            }
         }
 
         /* 标题自己的 scroll-margin-top 会让开常驻的导航栏 */
@@ -515,141 +657,96 @@ const script = `<script id="site-reading-toc-script">
         return true;
     }
 
-    /* 目录卡片下面那排按钮：
-       左：目录全部展开 / 全部收起；右：本文分类 / 本文标签收起 / 展开 */
-    var META_STATE = 'blog.left.meta.state.v2';
-    var TOC_STATE = 'blog.toc.state';
-
-    function readMeta() {
-        try {
-            return window.localStorage.getItem(META_STATE);
-        } catch (e) {
-            return null;
-        }
-    }
-
-    function saveMeta(state) {
-        try {
-            window.localStorage.setItem(META_STATE, state);
-        } catch (e) {
-            /* 隐私模式忽略 */
-        }
-    }
-
+    /* ── 目录卡片下面那排按钮 ──────────────────────────
+       左：目录全部展开 / 全部收起（只留一级标题）；
+       右：本文分类 + 本文标签 收起 / 展开。
+       只在桌面档的阅读态出现（见上面的 CSS） */
     function metaHidden() {
         return body.classList.contains('meta-hidden');
     }
 
-    function setMeta(hidden) {
-        body.classList.toggle('meta-hidden', hidden);
-        body.classList.toggle('meta-shown', !hidden);
-        var button = document.querySelector('.toc-meta-toggle');
-        if (button) {
-            syncMetaButton(button);
-        }
+    function tocFlat() {
+        return !!el.toc && el.toc.classList.contains('toc-flat');
     }
 
-    function syncMetaButton(button) {
+    /* 两个按钮共用一套文案同步：kind = 'level' | 'meta' */
+    function syncButton(kind) {
+        var button = el.left && el.left.querySelector('.toc-' + kind + '-toggle');
+        if (!button) {
+            return;
+        }
+
+        if (kind === 'level') {
+            var flat = tocFlat();
+            button.textContent = flat ? '目录全部展开 ▼' : '目录全部收起 ▲';
+            button.setAttribute('aria-expanded', flat ? 'false' : 'true');
+            return;
+        }
+
         var hidden = metaHidden();
         button.textContent = hidden ? '展开分类标签 ▼' : '收起分类标签 ▲';
         button.setAttribute('aria-expanded', hidden ? 'false' : 'true');
     }
 
-    /* ── 目录层级：全部展开 / 全部收起 ─────────────────────
-       收起时只留一级标题（CSS 里 #toc.toc-flat 把嵌套的 .menu-list 藏掉），
-       默认展开，选过的记在 localStorage */
-    function tocFlat() {
-        var toc = document.getElementById('toc');
-        return !!toc && toc.classList.contains('toc-flat');
-    }
-
-    function syncLevelButton(button) {
-        var flat = tocFlat();
-        if (button) {
-            button.textContent = flat ? '目录全部展开 ▼' : '目录全部收起 ▲';
-            button.setAttribute('aria-expanded', flat ? 'false' : 'true');
-        }
+    function setMeta(hidden) {
+        body.classList.toggle('meta-hidden', hidden);
+        syncButton('meta');
     }
 
     function setTocFlat(flat) {
-        var toc = document.getElementById('toc');
-        if (!toc) {
+        if (!el.toc) {
             return;
         }
-        toc.classList.toggle('toc-flat', flat);
-        syncLevelButton(document.querySelector('.toc-level-toggle'));
+        el.toc.classList.toggle('toc-flat', flat);
+        syncButton('level');
     }
 
-    function readTocState() {
-        try {
-            return window.localStorage.getItem(TOC_STATE);
-        } catch (e) {
-            return null;
-        }
-    }
-
-    function saveTocState(flat) {
-        try {
-            window.localStorage.setItem(TOC_STATE, flat ? 'flat' : 'full');
-        } catch (e) {
-            /* 隐私模式忽略 */
-        }
+    function makeButton(kind, onClick) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'toc-' + kind + '-toggle';
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            onClick();
+        });
+        return button;
     }
 
     function ensureTools() {
-        var left = document.querySelector('.column-left');
-        if (!left) {
+        if (!el.left) {
             return;
         }
 
-        var tools = null;
-        for (var i = 0; i < left.children.length; i++) {
-            if (left.children[i].classList.contains('toc-tools')) {
-                tools = left.children[i];
-                break;
-            }
-        }
-
+        var tools = el.left.querySelector('.toc-tools');
         if (!tools) {
             tools = document.createElement('div');
             tools.className = 'toc-tools';
-
-            var level = document.createElement('button');
-            level.type = 'button';
-            level.className = 'toc-level-toggle';
-            level.addEventListener('click', function (event) {
-                event.preventDefault();
+            tools.appendChild(makeButton('level', function () {
                 var flat = !tocFlat();
                 setTocFlat(flat);
-                saveTocState(flat);
-            });
-
-            var meta = document.createElement('button');
-            meta.type = 'button';
-            meta.className = 'toc-meta-toggle';
-            meta.addEventListener('click', function (event) {
-                event.preventDefault();
-
+                store(TOC_STATE, flat ? 'flat' : 'full');
+            }));
+            tools.appendChild(makeButton('meta', function () {
                 var hidden = !metaHidden();
                 setMeta(hidden);
-                saveMeta(hidden ? 'hidden' : 'shown');
-            });
-
-            tools.appendChild(level);
-            tools.appendChild(meta);
+                store(META_STATE, hidden ? 'hidden' : 'shown');
+            }));
 
             /* 插在「简介」之后：阅读态简介被藏起来，这排按钮就落在左栏最上面，
                目录始终排在它们下面 */
-            var profile = left.querySelector('[data-type="profile"]');
-            if (profile && profile.parentElement === left) {
-                left.insertBefore(tools, profile.nextSibling);
-            } else {
-                left.insertBefore(tools, left.firstChild);
+            var profile = null;
+            var kids = el.left.children;
+            for (var i = 0; i < kids.length; i++) {
+                if (kids[i].dataset.type === 'profile') {
+                    profile = kids[i];
+                    break;
+                }
             }
+            el.left.insertBefore(tools, profile ? profile.nextSibling : el.left.firstChild);
         }
 
-        syncLevelButton(tools.querySelector('.toc-level-toggle'));
-        syncMetaButton(tools.querySelector('.toc-meta-toggle'));
+        syncButton('level');
+        syncButton('meta');
     }
 
     document.addEventListener('click', function (event) {
@@ -670,21 +767,49 @@ const script = `<script id="site-reading-toc-script">
         window.addEventListener(type, unlock, { passive: true });
     });
 
-    /* scroll 不冒泡，但捕获阶段能收到 */
-    document.addEventListener('scroll', apply, { capture: true, passive: true });
-    window.addEventListener('resize', refresh);
+    /* scroll 不冒泡，但捕获阶段能同时收到窗口和正文列的滚动 */
+    document.addEventListener('scroll', function () {
+        updateProgress();
+        apply();
+    }, { capture: true, passive: true });
+
+    window.addEventListener('resize', function () {
+        measure();
+        layoutColumns();
+        updateProgress();
+    });
+
+    /* 图片（例如贡献日历）加载完高度会变，那时得再算一次能不能放下 */
+    window.addEventListener('load', function () {
+        measure();
+        layoutColumns();
+        updateProgress();
+    });
 
     function init() {
-        markTocPage();
-        /* 默认展开：只有用户亲手点过「收起」才收 */
-        setMeta(readMeta() === 'hidden');
-        setTocFlat(readTocState() === 'flat');
+        cache();
+        measure();
+        /* 默认全部展开：只有用户亲手点过「收起」才收 */
+        setMeta(stored(META_STATE) === 'hidden');
+        setTocFlat(stored(TOC_STATE) === 'flat');
         ensureTools();
-        refresh();
+        layoutColumns();
+        updateProgress();
+        apply();
+
+        /* 字体、图片、贡献日历脚本都可能把卡片晚一步撑高，高度一变就可能
+           从“放得下”变成“放不下”。这里在几个时间点再对一遍（每次几毫秒） */
+        [200, 600, 1200, 2000].forEach(function (ms) {
+            setTimeout(layoutColumns, ms);
+        });
     }
 
     document.addEventListener('DOMContentLoaded', init);
     document.addEventListener('pjax:complete', init);
+
+    /* 脚本挂在 body 末尾，内容此时已经解析完；
+       先缓存一次，让 has-toc 在首屏绘制前就生效 */
+    cache();
 }());
 </script>`;
 
