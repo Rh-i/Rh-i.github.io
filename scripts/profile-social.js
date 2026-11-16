@@ -42,7 +42,6 @@ a.social-tip[data-tip]::after {
     opacity: 0;
     transform: translate(-50%, -4px);
     pointer-events: none;
-    transition: opacity .16s ease, transform .16s ease;
     z-index: 30;
 }
 
@@ -59,7 +58,6 @@ a.social-tip[data-tip]::before {
     opacity: 0;
     transform: translateX(-50%) rotate(45deg);
     pointer-events: none;
-    transition: opacity .16s ease;
     z-index: 29;
 }
 

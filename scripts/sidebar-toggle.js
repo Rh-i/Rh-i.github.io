@@ -30,7 +30,6 @@ const style = `<style id="site-sidebar-toggle-style">
     align-items: center;
     justify-content: center;
     opacity: .7;
-    transition: opacity .15s, background-color .15s, color .15s;
 }
 .sb-toggle:hover {
     opacity: 1;
@@ -127,7 +126,6 @@ body.sb-right-hidden .column-main {
     box-shadow: 0 2px 10px rgba(0, 0, 0, .12);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
-    transition: opacity .15s, background-color .15s, border-color .15s, color .15s;
 }
 
 .sb-toggle-bottom:hover,
@@ -146,7 +144,7 @@ body.sb-left-hidden .sb-toggle-bottom {
 .sb-toggle-bottom-arrow {
     display: inline-block;
     font-size: .75rem;
-    transition: transform .2s ease;
+}
 }
 
 body.sb-left-hidden .sb-toggle-bottom-arrow {
@@ -203,7 +201,6 @@ body.sb-left-hidden .sb-toggle-bottom-arrow {
     border-radius: 999px;
     background: rgba(128, 128, 128, .2);
     white-space: nowrap;
-    transition: background-color .15s;
 }
 
 .sb-split:hover > span,
@@ -217,7 +214,7 @@ body.sb-left-hidden .sb-toggle-bottom-arrow {
 
 .sb-split-arrow {
     display: inline-block;
-    transition: transform .2s ease;
+}
 }
 
 .sb-split.is-collapsed .sb-split-arrow {

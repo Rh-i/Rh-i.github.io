@@ -22,7 +22,6 @@ const style = `<style id="site-post-sidebar-style">
     font-weight: normal;
     letter-spacing: 0;
     text-transform: none;
-    transition: background-color .15s ease;
 }
 .post-meta-widget .post-meta-tag:hover {
     background: rgba(128, 128, 128, .32);

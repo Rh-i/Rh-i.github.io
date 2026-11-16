@@ -317,7 +317,6 @@ body > .navbar .navbar-toggle {
     margin-left: auto;
     background: transparent;
     border-radius: 8px;
-    transition: background-color .15s, color .15s;
 }
 
 body > .navbar .navbar-toggle:hover,
@@ -362,7 +361,6 @@ body > .navbar.is-collapsed .navbar-start > .navbar-item {
     font-size: .95rem;
     line-height: 1.4;
     text-align: center;
-    transition: background-color .15s, color .15s;
 }
 
 body > .navbar.is-collapsed .navbar-start > .navbar-item:hover,
@@ -370,21 +368,7 @@ body > .navbar.is-collapsed .navbar-start > .navbar-item:focus-visible {
     background: rgba(128, 128, 128, .16);
 }
 
-/* 汉堡面板淡入：主题只切换 display，transition 不会触发，用 animation */
-@keyframes sb-nav-panel-in {
-    from {
-        opacity: 0;
-        transform: translateY(-6px);
-    }
-    to {
-        opacity: 1;
-        transform: none;
-    }
-}
-
-body > .navbar.is-open .navbar-start {
-    animation: sb-nav-panel-in .18s ease-out;
-}
+/* 汉堡面板直接出现，不做淡入（站点统一不要过渡动画） */
 
 /* 系统开了「减少动态效果」就不做位移/淡入 */
 @media screen and (prefers-reduced-motion: reduce) {
