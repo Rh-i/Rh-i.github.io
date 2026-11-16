@@ -124,10 +124,23 @@ const style = `<style id="site-reading-toc">
         display: none !important;
     }
 
-    /* 右侧栏卡片多的时候比视口还高，粘住后底部永远看不见；
-       限高并在栏内滚动，上下留白就跟左侧一致了 */
-    body .column-right.is-sticky {
+    /* 右侧栏卡片多的时候比视口还高，粘住后底部永远看不见。
+       用确定高度（不是 max-height）：内容少时也把框拉到同样的高度，
+       这样左右两栏底边齐平，不会一个顶到底、一个差一大块 */
+    body.is-reading .column-right.is-sticky {
+        height: calc(100vh - 8.75rem);
         max-height: calc(100vh - 8.75rem);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+    }
+
+    /* 中间正文卡片和左右一样处理：固定高度、在卡片内部滚动，
+       上边距 42px、下边距 42px，三张卡片的顶边、底边全部对齐 */
+    body.is-reading .column-main > .card {
+        position: sticky;
+        top: 6.5rem;
+        height: calc(100vh - 8.75rem);
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-width: thin;
@@ -176,6 +189,11 @@ const script = `<script id="site-reading-toc-script">
         line = Math.max(160, top - 96);
     }
 
+    /* 阅读态下正文卡片自己滚动，页面本身几乎不再滚动 */
+    function box() {
+        return document.querySelector('.column-main > .card');
+    }
+
     function apply() {
         /* 没有目录的页面（首页 / 归档 / 标签…）不进入阅读态 */
         if (!document.getElementById('toc')) {
@@ -185,14 +203,42 @@ const script = `<script id="site-reading-toc-script">
             return;
         }
 
-        var reading = window.pageYOffset > line;
-        if (reading !== body.classList.contains('is-reading')) {
-            body.classList.toggle('is-reading', reading);
-            /* 用户没手动选过时：进阅读态自动收起分类/标签，回到顶部就恢复 */
-            if (readMeta() === null) {
-                setMeta(reading);
-            }
+        var reading = body.classList.contains('is-reading');
+        var scroller = box();
+        var inner = scroller ? scroller.scrollTop : 0;
+        var pageAtTop = window.pageYOffset <= line;
+
+        /* 已经进入阅读态时，必须「卡片里也回到顶部、页面也在顶部」才退出，
+           否则一进一出会来回抖（进阅读态后页面高度变短，scrollY 自然回到 0） */
+        var want = reading
+            ? !(inner <= 0 && pageAtTop)
+            : window.pageYOffset > line;
+
+        if (want === reading) {
+            return;
         }
+
+        if (want) {
+            /* 先把原来的滚动量记下来，切完布局再转移到卡片内部 */
+            var offset = window.pageYOffset - line;
+            body.classList.add('is-reading');
+            if (readMeta() === null) {
+                setMeta(true);
+            }
+            var target = box();
+            if (target) {
+                window.scrollTo(0, 0);
+                target.scrollTop = offset > 0 ? offset : 0;
+            }
+            return;
+        }
+
+        var back = scroller ? scroller.scrollTop : 0;
+        body.classList.remove('is-reading');
+        if (readMeta() === null) {
+            setMeta(false);
+        }
+        window.scrollTo(0, line + back);
     }
 
     function refresh() {
@@ -366,7 +412,13 @@ const script = `<script id="site-reading-toc-script">
         var button = document.createElement('button');
         button.type = 'button';
         button.className = 'toc-meta-toggle';
-        button.addEventListener('click', function () {
+        button.addEventListener('click', function (event) {
+            /* 这个按钮长在 #toc 卡片里，主题给卡片绑了 toggleToc（手机浮层开关）。
+               不拦下冒泡的话，点一次目录卡片就变成浮层 + 蒙层，
+               之后按钮就点不到了 —— 表现就是“只能展开一次，再也不能收缩” */
+            event.preventDefault();
+            event.stopPropagation();
+
             var hidden = !metaHidden();
             setMeta(hidden);
             saveMeta(hidden ? 'hidden' : 'shown');
@@ -395,7 +447,8 @@ const script = `<script id="site-reading-toc-script">
         window.addEventListener(type, unlock, { passive: true });
     });
 
-    window.addEventListener('scroll', apply, { passive: true });
+    /* scroll 不冒泡，但捕获阶段能收到：这样窗口和「正文卡片内部」的滚动都算 */
+    document.addEventListener('scroll', apply, { capture: true, passive: true });
     window.addEventListener('resize', refresh);
 
     function init() {
