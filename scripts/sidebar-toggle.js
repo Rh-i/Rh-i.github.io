@@ -58,26 +58,27 @@ body.sb-right-hidden .column-right {
     display: none !important;
 }
 
-body.sb-left-hidden .column-right-shadow {
+/* 收起左栏 —— 不能简单地给 .column-left 加 display:none：
+   目录卡片（#toc）就住在左栏里，导航栏的「目录」按钮靠 #toc.is-active 弹浮层，
+   祖先一旦 display:none，浮层永远出不来（表现为点了没反应、页面只剩遮罩）。
+   所以只藏「卡片」，列本身留着：
+     - 手机上列是整行块级，藏完子元素自然就 0 高；
+     - 桌面上再把这一列的宽高收成 0，正文照样占满 */
+body.sb-left-hidden .column-left > :not([data-type="toc"]) {
     display: none !important;
 }
 
-/* 收起左栏 —— 不能简单地给 .column-left 加 display:none：
-   手机宽度下主题把目录卡片（#toc）做成 position:fixed 的浮层，
-   由导航栏那个「目录」按钮靠 .is-active 开关。
-   整列被 display:none 后 #toc 永远弹不出来，表现为「点了目录没反应」。
-
-   ≥768px：没有「目录」按钮（目录就写在左栏里），整列藏掉最干净；
-   <768px：只藏卡片，留下包着 #toc 的那一层 */
 @media screen and (min-width: 768px) {
     body.sb-left-hidden .column-left {
-        display: none !important;
-    }
-}
-
-@media screen and (max-width: 767px) {
-    body.sb-left-hidden .column-left > :not([data-type="toc"]) {
-        display: none !important;
+        flex: 0 0 0 !important;
+        width: 0 !important;
+        max-width: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        /* 收成 0 宽但允许溢出：浮层被激活时是 position:fixed，不受影响 */
+        overflow: visible;
     }
 }
 

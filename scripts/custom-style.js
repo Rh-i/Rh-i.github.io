@@ -53,18 +53,19 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content h4 {
 /* ── 正文垂直节奏统一 ──────────────────────────────────
    主题默认：段落/引用/表格下间距 16px，代码块 0px（和下文粘在一起），
    各级标题下间距又各不相同（12.4 / 12.1 / 10.08px），松紧不一。
-   统一成：块与块 20px，标题上 32px、下 12px，标题行高 1.35。
+   统一成：块与块 14px，标题上 26px、下 10px，标题行高 1.35。
+   （段落间距比原来 20px 收紧，行高 1.85 已经够松，再大就散了）
 
    选择器里的 > 很重要：只作用于正文的直接子元素，否则会连带匹配
    figure.highlight 内部的 .code pre 和 .gutter pre，代码块里多出 20px 空白 */
 body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > :is(p, ul, ol, blockquote, pre, table) {
     margin-top: 0;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 }
 
 body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > :is(h2, h3, h4, h5, h6) {
-    margin-top: 32px;
-    margin-bottom: 12px;
+    margin-top: 26px;
+    margin-bottom: 10px;
     line-height: 1.35;
 }
 
@@ -76,9 +77,11 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > :first
 
 /* 代码块：主题用的是 1.85 倍行高，显得又高又空。
    这里收紧字号、行高和内外边距，内部两个 pre 强制清零；
-   圆角放大到 10px 并裁掉溢出，视觉上更柔和 */
+   圆角放大到 10px 并裁掉溢出，视觉上更柔和。
+   外边距必须 !important：主题给 figure.highlight 写了 margin: 1em 0 !important，
+   不加就被它按 13px 字号算出的 1em（=13px）盖掉 */
 body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content figure.highlight {
-    margin: 20px 0;
+    margin: 14px 0 !important;
     font-size: 13px;
     line-height: 1.65;
     border-radius: 10px;
@@ -102,8 +105,8 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content figure.h
 
 /* 引用块：上下间距对称，内边距收一点，末尾段落去掉多余空白 */
 body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > blockquote {
-    margin: 20px 0;
-    padding: 16px 20px;
+    margin: 16px 0;
+    padding: 14px 18px;
     font-size: 15px;
 }
 
@@ -211,7 +214,7 @@ body .article-meta.level {
 
 /* 正文第一个引用块（关键字）—— 和元信息条共用同一套数值 */
 .article.card-content:has(> :is(h1, .title)) > .content > blockquote:first-child {
-    margin: 0 0 20px;
+    margin: 0 0 14px;
     padding: 0 .875rem .4rem;
     border-left: 4px solid rgba(128, 128, 128, .3);
     border-radius: 0 0 4px 4px;
