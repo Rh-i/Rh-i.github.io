@@ -201,11 +201,15 @@ body .column-left > .widget[data-type="toc"] > .toc-tools {
     body.has-toc .column-main {
         position: sticky;
         top: 6.5rem;
-        /* 和左右两栏同高、同样从 101 开始，卡片留 .75rem 内边距后
-           三栏卡片顶边、底边都在同一条线上 */
+        /* 高度和左右两栏一致，底边自然对齐 */
         height: calc(100vh - 10.25rem);
         max-height: calc(100vh - 10.25rem);
         overflow-y: auto;
+        /* 顶部的 .75rem 不能用 padding：scroll 容器的内边距是“内容的一部分”，
+           一滚就跟着走了，正文卡片会顶到 91，比左右两栏高出一块。
+           改成透明边框（边框在滚动区域之外），滚动时卡片顶边永远停在 101 */
+        padding-top: 0;
+        border-top: .75rem solid transparent;
         scrollbar-width: thin;
         scrollbar-color: rgba(128, 128, 128, .35) transparent;
     }
