@@ -128,17 +128,23 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > blockq
 }
 
 /* 文章顶部的元信息（时间 / 分类 / 阅读时长 / 访问量）
-   主题是 flex + nowrap + overflow-x:auto，窄屏会挤出横向滚动条；
-   .level-left 是内层 flex 容器，要让它能收缩（min-width:0）才真的换行 */
+   主题用的是 Bulma 的 level（flex + nowrap + overflow-x:auto），窄屏会挤出滚动条。
+   这里改成普通文本流：字段之间用「·」分隔，任何宽度都能自然换行，
+   行距只由 line-height 决定，不会像 flex 换行那样出现忽大忽小的间隙 */
 .article-meta.level,
 .article-meta.level .level-left {
-    flex-wrap: wrap;
-    row-gap: .375rem;
+    display: block;
 }
 
-.article-meta.level > .level-left {
-    flex: 1 1 0;
-    min-width: 0;
+.article-meta.level .level-item {
+    display: inline;
+    margin: 0 !important;
+    /* 字段之间靠右侧空白隔开：行末的 padding 不会显示出来，
+       换行时也不会把分隔符号丢到下一行行首 */
+    padding: 0 .55em 0 0;
+    /* 单个字段（如「3 分钟读完 (大约523个字)」）内部不再拆行，
+       否则会在数字和汉字之间断开；整块超宽时靠相邻字段之间换行 */
+    white-space: nowrap;
 }
 
 /* 标题提到最前。主题把元信息放在标题前面，小字压在 28px 标题上方很别扭；
@@ -159,26 +165,34 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > blockq
    主题原规则是 article.article .article-meta（特异性 0,2,1），要带 body 才压得过 */
 body .article-meta.level {
     margin: 0;
-    padding: .6rem .875rem;
+    /* 主题在 .article-meta 上开了 overflow-x: auto，内容一超宽就长出滚动条；
+       改成文本流后能自然换行，不需要它 */
+    overflow: visible;
+    /* 下内边距交给下方的关键字块，两块之间的空隙 = 两个半行距 + 上行的 padding-bottom，
+       这样上 / 中 / 下三处都是 8~9px，不会一块宽一块窄 */
+    padding: .4rem .875rem .25rem;
     border-left: 4px solid rgba(128, 128, 128, .3);
     border-radius: 4px 4px 0 0;
     background: rgba(128, 128, 128, .1);
+    /* 文字色和下面的关键字块统一（都用卡片正文色），
+       否则一块灰一块深，看着像两个不相干的部分 */
+    color: inherit;
     /* 元素上带着 Bulma 的 is-size-7（0.85rem），优先级比这里高，
        不加 !important 就和下面的关键字块差 0.35px，字距对不齐 */
     font-size: .875rem !important;
-    line-height: 1.7;
+    line-height: 1.5;
 }
 
 /* 正文第一个引用块（关键字）—— 和元信息条共用同一套数值 */
 .article.card-content:has(> h1) > .content > blockquote:first-child {
     margin: 0 0 20px;
-    padding: .6rem .875rem;
+    padding: 0 .875rem .4rem;
     border-left: 4px solid rgba(128, 128, 128, .3);
     border-radius: 0 0 4px 4px;
     background: rgba(128, 128, 128, .1);
     color: inherit;
     font-size: .875rem;
-    line-height: 1.7;
+    line-height: 1.5;
 }
 
 .article.card-content:has(> h1) > .content > blockquote:first-child > p {
