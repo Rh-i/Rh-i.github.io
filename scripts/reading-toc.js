@@ -12,8 +12,8 @@
  *
  * 做法：
  *   1. 正文进入视口（滚过标题区）时给 body 加 .is-reading
- *   2. CSS 里 .is-reading 时把 profile 卡片折叠掉，左栏只留
- *      「按钮 + 本文分类 + 本文标签 + 本文目录」（顺序不变，目录始终最底）
+ *   2. 文章顶部：左栏只留 简介 / 本文分类 / 本文标签，目录不显示；
+ *      进入阅读态：左栏换成 按钮 / 目录 / 本文分类 / 本文标签（顺序固定）
  *   3. 目录卡片自己有 max-height + overflow，长目录在卡片内部滚动；
  *      主题的 main.js 会把高亮项滚到卡片中间（它找的就是这个可滚动容器）
  *
@@ -77,9 +77,20 @@ body .column-left > .toc-meta-toggle {
         outline: none;
     }
 
-    /* 按钮后面紧跟着分类标签卡片，那张卡片不要再空出 42px，否则按钮像飘着 */
-    body.is-reading .column-left > .toc-meta-toggle + .widget {
-        margin-top: 0;
+    /* 按钮贴着目录卡片，不跟其余卡片抢那个 42px */
+    body.is-reading .column-left > .toc-meta-toggle {
+        order: 1;
+    }
+
+    /* 阅读态左栏顺序固定为：按钮 → 目录 → 本文分类 → 本文标签。
+       用 order 而不是挪 DOM：pjax / 折叠侧栏搬卡片之后位置也不会乱 */
+    body.is-reading .column-left > .widget[data-type="toc"] {
+        order: 2;
+        margin-top: .75rem;
+    }
+
+    body.is-reading .column-left > .post-meta-widget {
+        order: 3;
     }
 
     /* 「本文分类」「本文标签」永远排在目录上面，不参与排序。
@@ -164,8 +175,14 @@ body .column-left > .toc-meta-toggle {
         flex: 0 0 auto;
     }
 
-    /* 阅读态：简介卡片直接收起，让最上面空出来放按钮和分类/标签 */
+    /* 阅读态：简介卡片直接收起，让最上面空出来放按钮和目录 */
     body.is-reading .column-left > .widget[data-type="profile"] {
+        display: none;
+    }
+
+    /* 文章顶部（还没开始阅读）：左栏只留简介 + 本文分类 + 本文标签，
+       目录卡片整张不显示。开始往下滚、进入阅读态才把目录亮出来 */
+    body:not(.is-reading) .column-left > .widget[data-type="toc"] {
         display: none;
     }
 }
