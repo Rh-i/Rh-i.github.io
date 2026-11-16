@@ -459,65 +459,33 @@ body .footer .level-end {
     visibility: visible;
 }
 
-/* ══ 布局（动态比例） ════════════════════════════════════════
-   留白：--site-gutter 用 clamp 做线性 —— 小屏极小，宽屏放大，
-         1920 时正好左右各 10%（用户基准）
-   形态：视口宽决定几栏
-   松紧：宽高比决定侧栏宽度与卡片内边距
-   排除：min-height 排除手机横屏（844×390 也是 21:9）
+/* ══ 布局（连续缩放，无断点突变） ═════════════════════════════
+   四个数值全部用 clamp() 写成视口宽度的线性函数，
+   拖动窗口时留白 / 侧栏 / 卡片内边距是"无极"连续变化的，
+   不再有「1216px 一过就换一套数值」「宽高比一变就跳」的情况。
+
+   唯一保留的结构性切换：<768 单栏堆叠 ↔ ≥768 多栏并排。
+   那是栅格本身的改变，没法连续过渡。
    ════════════════════════════════════════════════════════════ */
 
 :root {
-    /* 左右留白随视口线性增长，封顶正好是 10vw：
-         320 →   7px（下限）   640 →  20px
-         768 →  37px          1024 →  73px
-        1440 → 132px          1920 → 192px（10%）
-        2560 → 256px（10%）   超宽屏也是 10% */
+    /* 左右留白：320→7 / 768→37 / 1024→73 / 1440→132 / 1920→192 / ≥2560→10% */
     --site-gutter: clamp(0.5rem, 14vw - 5rem, 10vw);
-    /* 侧栏宽度同样线性：
-        1280 → 240px   1600 → 256px   1920 → 307px */
-    --site-side: clamp(240px, 16vw, 320px);
-    --site-pad-y: 2.5rem;
-    --site-pad-x: 2.75rem;
-    /* 容器宽度的绝对上限。默认不设限（100%），
-       留白本身已经被 10vw 卡住；只有超宽屏在下面的媒体查询里才盖小 */
-    --site-max: 100%;
-}
 
-/* 标准：4:3 ~ 16:9 这一段和默认值一致，无需单独声明 */
+    /* 侧栏宽度：768~1333 都是 240px，之后线性放大，1920 时 340px 封顶。
+       之前 <1216 用 Bulma 的百分比（33%）、≥1216 突然换成固定像素，
+       中间那一段正文反而比侧栏还窄，缩放时明显一跳 */
+    --site-side: clamp(240px, 18vw, 340px);
 
-/* 宽屏：16:9 ~ 21:9（1080p / 1440p），min-height 排除手机横屏。
-   注意：这里**不能**再压 --site-max。
-   2560×1440（16:9）算下来留白就是 10vw = 256px，正文 80%；
-   之前写了 1536px 的上限，等于把边距又拓到 20%，2560 屏上就显得空了。
-   这里改用「16:9 等价宽度」封顶：80vh × 16/9。
-   16:9 屏幕上它恰好等于 80vw（不产生效果），超宽屏才会收住正文宽度 */
-@media screen and (min-width: 1216px) and (min-aspect-ratio: 16/9) and (max-aspect-ratio: 21/9) and (min-height: 700px) {
-    :root {
-        --site-pad-y: 2.625rem;
-        --site-pad-x: 3rem;
-        --site-max: calc(80vh * 16 / 9);
-    }
-}
+    /* 卡片内边距：同样线性，移动端约 15/11px，1440 约 39/43px */
+    --site-pad-y: clamp(0.9375rem, 2.2vw + 0.45rem, 2.75rem);
+    --site-pad-x: clamp(0.6875rem, 3vw, 3rem);
 
-/* 超宽：≥ 21:9（带鱼屏 3440×1440）。
-   留白继续按 10vw 变大，但正文别再无限变宽 ——
-   用同高度的 16:9 屏幕的 80% 宽度封顶，保证阅读宽度和 2560 屏一致 */
-@media screen and (min-width: 1216px) and (min-aspect-ratio: 21/9) and (min-height: 700px) {
-    :root {
-        --site-side: 340px;
-        --site-pad-y: 2.625rem;
-        --site-pad-x: 3rem;
-        --site-max: calc(80vh * 16 / 9);
-    }
-}
-
-/* 竖向：3:4 ~ 4:3（iPad 竖屏、方形窗口）横向紧张，内边距压缩 */
-@media screen and (min-width: 768px) and (min-aspect-ratio: 3/4) and (max-aspect-ratio: 4/3) {
-    :root {
-        --site-pad-y: 1.75rem;
-        --site-pad-x: 1.875rem;
-    }
+    /* 正文宽带上限：按「同高度的 16:9 屏幕的 80%」封顶。
+       16:9 屏幕上它正好等于 80vw → 不生效（留白就是 10%）；
+       只有比 16:9 更宽的带鱼屏才会收住正文宽度。
+       下限 1024px 防止矮窗口（例如 900×400）被算得过窄 */
+    --site-max: max(calc(80vh * 16 / 9), 1024px);
 }
 
 /* 消费变量：横向留白只由 --site-gutter 一处决定
@@ -535,16 +503,18 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .card-content {
     padding: var(--site-pad-y) var(--site-pad-x);
 }
 
-/* 侧栏固定宽度，剩余空间全给正文，卡片不会被拉宽 */
-@media screen and (min-width: 1216px) {
-    body.is-3-column .column-left,
+/* 侧栏固定宽度、剩余空间全给正文。
+   断点写 769 而不是 768：Bulma 在 768px 还算「手机档」，.columns 仍是 block（上下堆叠），
+   768 上把左栏压成 240px 会得到一个又窄又靠左的孤零零卡片列 */
+@media screen and (min-width: 769px) {
+    body:is(.is-2-column, .is-3-column) .column-left,
     body.is-3-column .column-right {
         flex: 0 0 var(--site-side);
         width: var(--site-side);
         max-width: var(--site-side);
     }
 
-    body.is-3-column .column-main {
+    body:is(.is-2-column, .is-3-column) .column-main {
         flex: 1 1 auto;
         width: auto;
         max-width: none;
@@ -553,21 +523,17 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .card-content {
 
 /* 手机：≤767px 或 ≤3:4（含 9:19.5 / 9:20 / 9:21 全面屏）
    同时写 max-width 是为了兜底：Safari 14 及更早不支持 aspect-ratio 媒体查询，
-   只写宽高比的话这些设备会拿到桌面档的 300px 侧栏。
+   只写宽高比的话这些设备会拿到桌面档的侧栏。
    右侧 widget（分类 / 最新 / 归档 / 标签 / 日历）整体隐藏，只留正文 */
 @media screen and (max-width: 767px), screen and (max-aspect-ratio: 3/4) {
     body.is-3-column .column-right {
         display: none;
     }
-
-    body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .card-content {
-        padding: 1.25rem 1rem;
-    }
 }
 
 /* 小屏手机（≤640px）：Bulma 栅格的负 margin 与列内边距成对归零，
-   再压卡片内边距，把宽度尽量还给正文（375 屏可到 92%）；
-   同时把表格改成可横向滚动的块，否则中文列名会被挤成两行 */
+   把宽度尽量还给正文；同时把表格改成可横向滚动的块，
+   否则中文列名会被挤成两行。卡片内边距已由 clamp 接管，这里不再覆盖 */
 @media screen and (max-width: 640px) {
     body .columns {
         margin-left: 0;
@@ -577,10 +543,6 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .card-content {
     body .columns > .column {
         padding-left: 0;
         padding-right: 0;
-    }
-
-    body .column-main .card-content {
-        padding: .875rem .625rem;
     }
 
     .content > table {
