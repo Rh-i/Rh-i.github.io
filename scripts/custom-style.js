@@ -153,21 +153,38 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > blockq
     order: -1;
 }
 
-/* 元信息落到标题和正文之间，直接沿用「关键字」引用块的视觉语言：
-   浅灰底 + 左侧竖条 + 小圆角，两块挨在一起像同一组信息
+/* 元信息落到标题和正文之间，和下面的「关键字」块拼成一个整体：
+   同一底色、同一字号、同一左侧竖条，中间不留缝，
+   圆角由两半各自负责（上圆下平 / 上平下圆）。
    主题原规则是 article.article .article-meta（特异性 0,2,1），要带 body 才压得过 */
 body .article-meta.level {
     margin: 0;
     padding: .6rem .875rem;
     border-left: 4px solid rgba(128, 128, 128, .3);
-    border-radius: 4px;
+    border-radius: 4px 4px 0 0;
     background: rgba(128, 128, 128, .1);
+    /* 元素上带着 Bulma 的 is-size-7（0.85rem），优先级比这里高，
+       不加 !important 就和下面的关键字块差 0.35px，字距对不齐 */
+    font-size: .875rem !important;
+    line-height: 1.7;
 }
 
-/* 紧跟着的「关键字」引用块原本有 20px 上边距，会把两组信息拆开，
-   这里收窄到 8px，让元信息条和关键字块看起来是同一组 */
+/* 正文第一个引用块（关键字）—— 和元信息条共用同一套数值 */
 .article.card-content:has(> h1) > .content > blockquote:first-child {
-    margin-top: .5rem;
+    margin: 0 0 20px;
+    padding: .6rem .875rem;
+    border-left: 4px solid rgba(128, 128, 128, .3);
+    border-radius: 0 0 4px 4px;
+    background: rgba(128, 128, 128, .1);
+    color: inherit;
+    font-size: .875rem;
+    line-height: 1.7;
+}
+
+.article.card-content:has(> h1) > .content > blockquote:first-child > p {
+    margin: 0;
+    font-size: inherit;
+    line-height: inherit;
 }
 
 /* TOC 卡片标题：主题语言包里写的是「目录」，和左栏的
