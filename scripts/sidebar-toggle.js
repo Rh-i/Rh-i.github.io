@@ -75,17 +75,23 @@ body.sb-right-hidden .column-right {
 }
 
 /* 右侧卡片搬进左栏时，用它和"本来就在左边"的卡片隔开。
-   中间是胶囊标签，两侧是渐隐细线，明暗主题都靠半透明灰自动适配 */
+   中间是胶囊标签（可点击收起/展开），两侧是渐隐细线，明暗主题都靠半透明灰自动适配 */
 .sb-split {
     display: flex;
     align-items: center;
     gap: .625rem;
+    width: 100%;
     margin: 2rem 0 .5rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
     color: rgba(128, 128, 128, .95);
+    font-family: inherit;
     font-size: .8rem;
     font-weight: 600;
     letter-spacing: .06em;
     user-select: none;
+    cursor: pointer;
 }
 
 .sb-split::before,
@@ -105,10 +111,37 @@ body.sb-right-hidden .column-right {
 }
 
 .sb-split > span {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
     padding: 3px 11px;
     border-radius: 999px;
     background: rgba(128, 128, 128, .2);
     white-space: nowrap;
+    transition: background-color .15s;
+}
+
+.sb-split:hover > span,
+.sb-split:focus-visible > span {
+    background: rgba(128, 128, 128, .32);
+}
+
+.sb-split:focus-visible {
+    outline: none;
+}
+
+.sb-split-arrow {
+    display: inline-block;
+    transition: transform .2s ease;
+}
+
+.sb-split.is-collapsed .sb-split-arrow {
+    transform: rotate(-90deg);
+}
+
+/* 收起后把搬过来的卡片藏起来：marker 是它们的直接前面兄弟 */
+.sb-split.is-collapsed ~ [data-sb-moved] {
+    display: none !important;
 }
 </style>`;
 
@@ -116,6 +149,8 @@ const script = `<script id="site-sidebar-toggle">
 (function () {
     var LEFT = 'blog.sidebar.left';
     var RIGHT = 'blog.sidebar.right';
+    // 搬进左栏的那组卡片是否收起（'0' = 收起，其余 = 展开）
+    var FOLDED = 'blog.sidebar.rightFolded';
 
     function read(key) {
         try {
@@ -161,7 +196,8 @@ const script = `<script id="site-sidebar-toggle">
         }
     }
 
-    // 收起右栏时不直接丢内容，而是把卡片搬进左栏底部，用 .sb-split 隔开。
+    // 右侧卡片搬进左栏时，用它和"本来就在左边"的卡片隔开。
+    // 中间是可点击的胶囊：点一下把搬过来的卡片收起来，再点展开。
     // 只在桌面宽度这么做：手机上两栏本来就是堆叠的，搬过去只会让页面更长
     function migrateRight(hidden) {
         var left = document.querySelector('.column-left');
@@ -181,11 +217,21 @@ const script = `<script id="site-sidebar-toggle">
             if (!widgets.length) {
                 return;
             }
-            var divider = document.createElement('div');
+
+            var isFolded = read(FOLDED) === '0';
+            var divider = document.createElement('button');
+            divider.type = 'button';
             divider.id = 'sb-split-marker';
-            divider.className = 'sb-split';
-            divider.setAttribute('aria-hidden', 'true');
-            divider.innerHTML = '<span>更多</span>';
+            divider.className = 'sb-split' + (isFolded ? ' is-collapsed' : '');
+            divider.setAttribute('aria-expanded', isFolded ? 'false' : 'true');
+            divider.innerHTML = '<span>更多<span class="sb-split-arrow">&#9662;</span></span>';
+            divider.addEventListener('click', function () {
+                var folded = !divider.classList.contains('is-collapsed');
+                divider.classList.toggle('is-collapsed', folded);
+                divider.setAttribute('aria-expanded', folded ? 'false' : 'true');
+                save(FOLDED, folded ? '0' : '1');
+            });
+
             left.appendChild(divider);
             Array.prototype.forEach.call(widgets, function (widget, index) {
                 widget.setAttribute('data-sb-moved', '1');
@@ -206,6 +252,7 @@ const script = `<script id="site-sidebar-toggle">
         moved.forEach(function (widget) {
             widget.removeAttribute('data-sb-moved');
             widget.removeAttribute('data-sb-order');
+            widget.removeAttribute('style');
             right.appendChild(widget);
         });
         marker.parentNode.removeChild(marker);
