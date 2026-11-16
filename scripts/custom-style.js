@@ -277,6 +277,39 @@ body > .navbar .navbar-end > .navbar-item {
     white-space: nowrap;
 }
 
+/* 收进汉堡按钮后，菜单区里只剩「汉堡 + 右侧图标」，
+   用 margin-left:auto 把它们整组推到最右边，和展开时右对齐的位置一致 */
+body > .navbar .navbar-toggle {
+    margin-left: auto;
+}
+
+/* 页脚用和导航栏同一套逻辑：左边信息、右边图标，先保持一行，
+   放不下时图标整体换到下一行（仍靠右），
+   而不是像主题那样一到 769px 就直接变成上下两堆 */
+body .footer .container > .level {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .75rem 1rem;
+}
+
+body .footer .level-start {
+    flex: 1 1 auto;
+    min-width: 0;
+    /* 主题在窄屏把页脚文字居中，和导航栏的左对齐不一致，这里统一成左对齐 */
+    text-align: left;
+}
+
+/* 左右都 auto：同一行时 level-start 用 flex-grow 把空间吃干净，
+   auto 边距分不到空间，图标就贴在右边；换到第二行后那一行只剩图标，
+   剩余空间会被两侧 auto 边距平分，于是自动居中 */
+body .footer .level-end {
+    flex: 0 0 auto;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 
 /* TOC 卡片标题：主题语言包里写的是「目录」，和左栏的
    「本文分类 / 本文标签」不成体系，这里改成「本文目录」。
