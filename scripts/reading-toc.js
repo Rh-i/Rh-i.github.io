@@ -30,9 +30,9 @@ html {
     scrollbar-gutter: stable;
 }
 
-/* 目录下方那排小按钮（目录全部展开/收起、分类标签收起/展开）
-   只在桌面档的阅读态出现：手机上目录是浮层，用不上 */
-body .column-left > .toc-tools {
+/* 目录卡片底部的按钮排（目录全部展开/收起、分类标签收起/展开）：
+   默认不显示，只有阅读态的桌面档才露出来（手机上目录是浮层，用不上） */
+body .column-left > .widget[data-type="toc"] > .toc-tools {
     display: none;
 }
 
@@ -64,9 +64,22 @@ body .column-left > .toc-tools {
         height: 0;
     }
 
-    /* 目录卡片下面那排小按钮（见 ensureTools）：
-       左：目录全部展开 / 全部收起；右：分类标签收起 / 展开 */
-    body .column-left > .toc-tools > button {
+    /* 目录卡片底部的按钮排（见 ensureTools）：
+       左：目录全部展开 / 全部收起；右：分类标签收起 / 展开。
+       放在卡片里面而不是卡片下面 —— 卡片自己就是整栏高度，
+       卡片底边才能和正文、右栏对齐 */
+    body .column-left > .widget[data-type="toc"] > .toc-tools {
+        flex: 0 0 auto;
+        gap: .5rem;
+        padding: .6rem 1.5rem .9rem;
+        border-top: 1px solid rgba(128, 128, 128, .16);
+    }
+
+    body.is-reading .column-left > .widget[data-type="toc"] > .toc-tools {
+        display: flex;
+    }
+
+    body .column-left > .widget[data-type="toc"] > .toc-tools > button {
         flex: 1 1 0;
         min-width: 0;
         display: flex;
@@ -86,18 +99,10 @@ body .column-left > .toc-tools {
         cursor: pointer;
     }
 
-    body .column-left > .toc-tools > button:hover,
-    body .column-left > .toc-tools > button:focus-visible {
+    body .column-left > .widget[data-type="toc"] > .toc-tools > button:hover,
+    body .column-left > .widget[data-type="toc"] > .toc-tools > button:focus-visible {
         opacity: 1;
         outline: none;
-    }
-
-    /* 按钮排紧贴在目录卡片下方 */
-    body.is-reading .column-left > .toc-tools {
-        order: 2;
-        margin-top: .75rem;
-        display: flex;
-        gap: .5rem;
     }
 
     /* 目录只留一级：把嵌套的 .menu-list 全收起来 */
@@ -707,17 +712,20 @@ const script = `<script id="site-reading-toc-script">
         button.className = 'toc-' + kind + '-toggle';
         button.addEventListener('click', function (event) {
             event.preventDefault();
+            /* 按钮住在目录卡片里，卡片上挂了主题的 toggleToc（手机浮层开关），
+               不拦一下点完会把目录变成浮层 */
+            event.stopPropagation();
             onClick();
         });
         return button;
     }
 
     function ensureTools() {
-        if (!el.left) {
+        if (!el.toc) {
             return;
         }
 
-        var tools = el.left.querySelector('.toc-tools');
+        var tools = el.toc.querySelector(':scope > .toc-tools');
         if (!tools) {
             tools = document.createElement('div');
             tools.className = 'toc-tools';
@@ -732,17 +740,8 @@ const script = `<script id="site-reading-toc-script">
                 store(META_STATE, hidden ? 'hidden' : 'shown');
             }));
 
-            /* 插在「简介」之后：阅读态简介被藏起来，这排按钮就落在左栏最上面，
-               目录始终排在它们下面 */
-            var profile = null;
-            var kids = el.left.children;
-            for (var i = 0; i < kids.length; i++) {
-                if (kids[i].dataset.type === 'profile') {
-                    profile = kids[i];
-                    break;
-                }
-            }
-            el.left.insertBefore(tools, profile ? profile.nextSibling : el.left.firstChild);
+            /* 放到目录卡片的底部：卡片本身就是整栏高度，底边才能和中/右对齐 */
+            el.toc.appendChild(tools);
         }
 
         syncButton('level');
