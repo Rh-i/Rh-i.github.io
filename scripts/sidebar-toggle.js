@@ -512,6 +512,15 @@ const script = `<script id="site-sidebar-toggle">
         apply();
         syncVisibility();
 
+        // 脚本在 body 末尾执行，此时主题的样式表（走 CDN）可能还没到，
+        // 三栏的宽度都还是 0，rightCollapsed() 会误判成「右栏被隐藏」而把卡片搬到左栏，
+        // 结果右栏和左栏各显示一份。load 之后宽度才是真的，重算一次
+        window.addEventListener('load', function () {
+            migrated = null;
+            apply();
+            syncVisibility();
+        });
+
         var timer = null;
         window.addEventListener('resize', function () {
             clearTimeout(timer);

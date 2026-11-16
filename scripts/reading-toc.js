@@ -39,6 +39,44 @@ const style = `<style id="site-reading-toc">
         border-radius: 3px;
     }
 
+    /* 目录卡片底部的小按钮：收起 / 展开「本文分类」「本文标签」 */
+    body .column-left > .widget[data-type="toc"] > .toc-meta-toggle {
+        display: block;
+        width: 100%;
+        padding: .45rem .5rem;
+        border: none;
+        border-top: 1px solid rgba(128, 128, 128, .16);
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-size: .8rem;
+        line-height: 1.2;
+        text-align: center;
+        opacity: .7;
+        cursor: pointer;
+    }
+
+    body .column-left > .widget[data-type="toc"] > .toc-meta-toggle:hover,
+    body .column-left > .widget[data-type="toc"] > .toc-meta-toggle:focus-visible {
+        opacity: 1;
+        outline: none;
+    }
+
+    /* 手机上的目录浮层里用不着这个按钮 */
+    #toc.is-active > .toc-meta-toggle {
+        display: none;
+    }
+
+    /* 收起后：左栏只剩目录，目录卡片把腾出的高度全吃掉 */
+    body.meta-folded .column-left > .post-meta-widget {
+        display: none;
+    }
+
+    /* 两栏布局（卡片已搬进左栏、左栏不限高）时，目录靠这个上限变长 */
+    body.meta-folded .column-left.sb-migrated > .widget[data-type="toc"] .card-content {
+        max-height: min(70vh, 42rem);
+    }
+
     /* 目录内部不要任何过渡：切换高亮时主题会给 <ul> 加类名，
        若带 transition: all 就会连着布局一起动画，点条目时看着卡 */
     body .column-left > .widget[data-type="toc"],
@@ -86,6 +124,9 @@ const style = `<style id="site-reading-toc">
 
     body.is-reading .column-left > .widget[data-type="toc"] {
         order: -1;
+        /* 变成第一张卡片后，卡片之间那 21px 的上间距要抵消，
+           否则目录卡片会比正文卡片低 21px，看着“间距不对” */
+        margin-top: 0;
     }
 }
 </style>`;
@@ -210,6 +251,18 @@ const script = `<script id="site-reading-toc-script">
             return false;
         }
 
+        /* 窄屏下目录是浮层（#toc.is-active + #toc-mask）：
+           我们把点击拦下来了，主题的 toggleToc 不会执行，
+           所以得自己把浮层关掉，否则会停在那层目录上不动 */
+        var tocEl = document.getElementById('toc');
+        if (tocEl && tocEl.classList.contains('is-active')) {
+            tocEl.classList.remove('is-active');
+            var maskEl = document.getElementById('toc-mask');
+            if (maskEl) {
+                maskEl.classList.remove('is-active');
+            }
+        }
+
         /* 先把阅读态定下来再滚动：否则滚动过程中简介卡片刚好被隐藏，
            左栏会重排一次，视觉上就是跳转时“抽一下” */
         if (!body.classList.contains('is-reading')) {
@@ -229,6 +282,51 @@ const script = `<script id="site-reading-toc-script">
         }
 
         return true;
+    }
+
+    /* 目录卡片底部放一个「收起分类与标签」的按钮：
+       左栏就那么多高度，把这两张卡片收起来，目录能多吃 190px 左右的长度 */
+    var META_FOLDED = 'blog.left.meta.folded';
+
+    function readMeta() {
+        try {
+            return window.localStorage.getItem(META_FOLDED) === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function saveMeta(folded) {
+        try {
+            window.localStorage.setItem(META_FOLDED, folded ? '1' : '0');
+        } catch (e) {
+            /* 隐私模式忽略 */
+        }
+    }
+
+    function syncMetaButton(button) {
+        var folded = body.classList.contains('meta-folded');
+        button.textContent = folded ? '展开分类与标签' : '收起分类与标签';
+        button.setAttribute('aria-expanded', folded ? 'false' : 'true');
+    }
+
+    function ensureMetaToggle() {
+        var tocCard = document.getElementById('toc');
+        if (!tocCard || tocCard.querySelector('.toc-meta-toggle')) {
+            return;
+        }
+
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'toc-meta-toggle';
+        button.addEventListener('click', function () {
+            var folded = body.classList.toggle('meta-folded');
+            saveMeta(folded);
+            syncMetaButton(button);
+        });
+
+        tocCard.appendChild(button);
+        syncMetaButton(button);
     }
 
     document.addEventListener('click', function (event) {
@@ -252,8 +350,18 @@ const script = `<script id="site-reading-toc-script">
     window.addEventListener('scroll', apply, { passive: true });
     window.addEventListener('resize', refresh);
 
-    document.addEventListener('DOMContentLoaded', refresh);
+    document.addEventListener('DOMContentLoaded', function () {
+        if (readMeta()) {
+            body.classList.add('meta-folded');
+        }
+        ensureMetaToggle();
+        refresh();
+    });
     document.addEventListener('pjax:complete', function () {
+        if (readMeta()) {
+            body.classList.add('meta-folded');
+        }
+        ensureMetaToggle();
         refresh();
     });
 }());
