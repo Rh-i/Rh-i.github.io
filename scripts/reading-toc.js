@@ -21,44 +21,65 @@
 
 const style = `<style id="site-reading-toc">
 @media screen and (min-width: 769px) {
-    /* ── 目录卡片：限高 + 自己滚 ──────────────────────────
-       长文章的目录有十几二十条，全展开会把左栏撑到视口外面；
-       这里把可见高度收在屏幕的一半左右，只露出当前位置附近的条目，
-       其余的在卡片内部滚（滚轮在目录上滚动不会连带滚正文） */
-    .column-left .widget[data-type="toc"] .card-content {
-        max-height: min(52vh, 26rem);
+    /* ── 左栏：目录吃掉剩余高度 ──────────────────────────
+       左栏高度压在「视口 - 导航栏 - 上下留白」以内，
+       分类 / 标签这类小卡片按自身高度完整显示（不允许被压缩），
+       剩下的空间全部给目录，目录自己滚 —— 大约占 3/4 */
+    body .column-left {
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 7.5rem);
+    }
+
+    body .column-left > .widget:not([data-type="toc"]) {
+        flex: 0 0 auto;
+    }
+
+    body .column-left > .widget[data-type="toc"] {
+        flex: 1 1 auto;
+        min-height: 9rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body .column-left > .widget[data-type="toc"] .card-content {
+        flex: 1 1 auto;
+        min-height: 0;
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-width: thin;
         scrollbar-color: rgba(128, 128, 128, .35) transparent;
     }
 
-    .column-left .widget[data-type="toc"] .card-content::-webkit-scrollbar {
+    body .column-left > .widget[data-type="toc"] .card-content::-webkit-scrollbar {
         width: 6px;
     }
 
-    .column-left .widget[data-type="toc"] .card-content::-webkit-scrollbar-thumb {
+    body .column-left > .widget[data-type="toc"] .card-content::-webkit-scrollbar-thumb {
         background: rgba(128, 128, 128, .35);
         border-radius: 3px;
     }
 
-    /* ── 阅读态：收起简介卡片，把目录提到左栏最上面 ────────── */
+    /* ── 卡片出现 / 消失都用同一套缓动，避免硬切 ───────── */
+    body .column-left > .widget,
+    body .column-right > .widget {
+        transition: opacity .25s ease, transform .25s ease, max-height .35s cubic-bezier(.4, 0, .2, 1),
+            margin .35s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    /* 阅读态：简介卡片向上收起 + 淡出，目录顶到最上面 */
     body .column-left > .widget[data-type="profile"] {
         max-height: 2000px;
-        transition: max-height .35s ease, opacity .25s ease, margin .35s ease;
+        transform-origin: top center;
     }
 
     body.is-reading .column-left > .widget[data-type="profile"] {
         max-height: 0;
         opacity: 0;
+        transform: translateY(-10px) scale(.985);
         margin-bottom: 0;
         overflow: hidden;
         pointer-events: none;
-    }
-
-    body.is-reading .column-left {
-        display: flex;
-        flex-direction: column;
     }
 
     body.is-reading .column-left > .widget[data-type="toc"] {
@@ -102,12 +123,134 @@ const script = `<script id="site-reading-toc-script">
         apply();
     }
 
+    /* ── 点目录跳转：直接跳过去，不要平滑滚动 ──────────────────
+       主题的 toc.js 用 scrollIntoView({ behavior: 'smooth' }) 跳转，
+       动画期间每个标题依次进入视口，高亮就跟着一路扫过去，
+       目录卡片自己也会被滚来滚去 —— 看着很鬼畜。
+       这里在捕获阶段拦下点击（stopPropagation 让 toc.js 的监听器不执行），
+       自己瞬时跳转 + 手动写 URL，跳完只高亮目标这一条 */
+    var lock = { link: null, until: 0 };
+
+    /* 锁定期间反复把高亮拉回目标项（toc.js 的 IntersectionObserver 还会改类名） */
+    function enforce() {
+        if (!lock.link || performance.now() > lock.until) {
+            return;
+        }
+
+        var toc = document.getElementById('toc');
+        if (!toc || !toc.contains(lock.link)) {
+            lock.link = null;
+            return;
+        }
+
+        toc.querySelectorAll('.menu-list a.is-active').forEach(function (a) {
+            if (a !== lock.link) {
+                a.classList.remove('is-active');
+            }
+        });
+
+        if (!lock.link.classList.contains('is-active')) {
+            lock.link.classList.add('is-active');
+        }
+
+        /* 子项被点亮时，把它的父级也点亮，跟主题的目录树一致 */
+        var menuList = lock.link.parentElement && lock.link.parentElement.parentElement;
+        while (menuList && menuList.classList && menuList.classList.contains('menu-list') &&
+            menuList.parentElement && menuList.parentElement.tagName.toLowerCase() === 'li') {
+            var parentLink = menuList.parentElement.children[0];
+            if (parentLink && !parentLink.classList.contains('is-active')) {
+                parentLink.classList.add('is-active');
+            }
+            menuList = menuList.parentElement.parentElement;
+        }
+    }
+
+    function startWatcher() {
+        if (!window.MutationObserver) {
+            return;
+        }
+        var toc = document.getElementById('toc');
+        if (!toc || toc.dataset.lockWatched === '1') {
+            return;
+        }
+        toc.dataset.lockWatched = '1';
+        new MutationObserver(function () {
+            enforce();
+        }).observe(toc, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    }
+
+    function lockTo(link) {
+        lock.link = link;
+        lock.until = performance.now() + 1500;
+        enforce();
+    }
+
+    function unlock() {
+        lock.link = null;
+    }
+
+    function jumpTo(link) {
+        var href = link.getAttribute('data-href') || link.getAttribute('href') || '';
+        if (href.charAt(0) !== '#') {
+            return false;
+        }
+
+        var id = href.slice(1);
+        var target = document.getElementById(id);
+        if (!target) {
+            try {
+                target = document.getElementById(decodeURIComponent(id));
+            } catch (e) {
+                target = null;
+            }
+        }
+        if (!target) {
+            return false;
+        }
+
+        /* 标题自己的 scroll-margin-top 会让开常驻的导航栏 */
+        target.scrollIntoView();
+
+        /* 跳转后自己点亮这一条，并在随后的 1.5s 里拦住主题的高亮跟随 */
+        lockTo(link);
+
+        if (window.history && window.history.pushState) {
+            window.history.pushState(null, null, href);
+        } else {
+            window.location.hash = href;
+        }
+
+        return true;
+    }
+
+    document.addEventListener('click', function (event) {
+        var link = event.target && event.target.closest ? event.target.closest('#toc .menu-list a') : null;
+        if (!link) {
+            return;
+        }
+        if (!jumpTo(link)) {
+            return;
+        }
+        /* 拦在捕获阶段：toc.js 挂在 <a> 上的平滑滚动和高亮跟随都不会再触发 */
+        event.preventDefault();
+        event.stopPropagation();
+    }, true);
+
+    /* 用户一旦自己滚轮 / 触摸 / 键盘滚动，就说明他要跟着正文看了，解锁 */
+    ['wheel', 'touchstart', 'keydown'].forEach(function (type) {
+        window.addEventListener(type, unlock, { passive: true });
+    });
+
     window.addEventListener('scroll', apply, { passive: true });
     window.addEventListener('resize', refresh);
 
-    document.addEventListener('DOMContentLoaded', refresh);
+    document.addEventListener('DOMContentLoaded', function () {
+        refresh();
+        startWatcher();
+    });
     document.addEventListener('pjax:complete', function () {
         refresh();
+        startWatcher();
     });
 }());
 </script>`;
