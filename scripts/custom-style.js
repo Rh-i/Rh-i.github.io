@@ -141,6 +141,22 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > blockq
     min-width: 0;
 }
 
+/* TOC 卡片标题：主题语言包里写的是「目录」，和左栏的
+   「本文分类 / 本文标签」不成体系，这里改成「本文目录」。
+   用 visibility 覆盖而不是 font-size:0，能保留主题原有的字号和颜色 */
+.widget[data-type="toc"] .menu-label {
+    position: relative;
+    visibility: hidden;
+}
+
+.widget[data-type="toc"] .menu-label::after {
+    content: "本文目录";
+    position: absolute;
+    left: 0;
+    top: 0;
+    visibility: visible;
+}
+
 /* ══ 布局（动态比例） ════════════════════════════════════════
    留白：--site-gutter 用 clamp 做线性 —— 小屏极小，宽屏放大，
          1920 时正好左右各 10%（用户基准）

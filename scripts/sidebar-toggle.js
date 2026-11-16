@@ -73,6 +73,43 @@ body.sb-right-hidden .column-right {
         max-width: none;
     }
 }
+
+/* 右侧卡片搬进左栏时，用它和"本来就在左边"的卡片隔开。
+   中间是胶囊标签，两侧是渐隐细线，明暗主题都靠半透明灰自动适配 */
+.sb-split {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    margin: 2rem 0 .5rem;
+    color: rgba(128, 128, 128, .95);
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    user-select: none;
+}
+
+.sb-split::before,
+.sb-split::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 2px;
+    border-radius: 2px;
+}
+
+.sb-split::before {
+    background: linear-gradient(to right, rgba(128, 128, 128, .08), rgba(128, 128, 128, .55));
+}
+
+.sb-split::after {
+    background: linear-gradient(to left, rgba(128, 128, 128, .08), rgba(128, 128, 128, .55));
+}
+
+.sb-split > span {
+    padding: 3px 11px;
+    border-radius: 999px;
+    background: rgba(128, 128, 128, .2);
+    white-space: nowrap;
+}
 </style>`;
 
 const script = `<script id="site-sidebar-toggle">
@@ -110,6 +147,8 @@ const script = `<script id="site-sidebar-toggle">
         document.body.classList.toggle('sb-left-hidden', hiddenLeft);
         document.body.classList.toggle('sb-right-hidden', hiddenRight);
 
+        migrateRight(hiddenRight);
+
         var leftBtn = document.getElementById('sb-toggle-left');
         var rightBtn = document.getElementById('sb-toggle-right');
         if (leftBtn) {
@@ -120,6 +159,56 @@ const script = `<script id="site-sidebar-toggle">
             rightBtn.title = hiddenRight ? '显示右侧栏' : '隐藏右侧栏';
             rightBtn.innerHTML = hiddenRight ? '&#10094;' : '&#10095;';
         }
+    }
+
+    // 收起右栏时不直接丢内容，而是把卡片搬进左栏底部，用 .sb-split 隔开。
+    // 只在桌面宽度这么做：手机上两栏本来就是堆叠的，搬过去只会让页面更长
+    function migrateRight(hidden) {
+        var left = document.querySelector('.column-left');
+        var right = document.querySelector('.column-right');
+        if (!left || !right) {
+            return;
+        }
+
+        var marker = document.getElementById('sb-split-marker');
+        var canMigrate = hidden && window.matchMedia('(min-width: 1024px)').matches;
+
+        if (canMigrate) {
+            if (marker) {
+                return;
+            }
+            var widgets = right.querySelectorAll(':scope > .widget');
+            if (!widgets.length) {
+                return;
+            }
+            var divider = document.createElement('div');
+            divider.id = 'sb-split-marker';
+            divider.className = 'sb-split';
+            divider.setAttribute('aria-hidden', 'true');
+            divider.innerHTML = '<span>更多</span>';
+            left.appendChild(divider);
+            Array.prototype.forEach.call(widgets, function (widget, index) {
+                widget.setAttribute('data-sb-moved', '1');
+                widget.setAttribute('data-sb-order', String(index));
+                left.appendChild(widget);
+            });
+            return;
+        }
+
+        if (!marker) {
+            return;
+        }
+        // 还原成原来的顺序，避免多次折叠后错位
+        var moved = Array.prototype.slice.call(left.querySelectorAll('[data-sb-moved]'));
+        moved.sort(function (a, b) {
+            return Number(a.getAttribute('data-sb-order')) - Number(b.getAttribute('data-sb-order'));
+        });
+        moved.forEach(function (widget) {
+            widget.removeAttribute('data-sb-moved');
+            widget.removeAttribute('data-sb-order');
+            right.appendChild(widget);
+        });
+        marker.parentNode.removeChild(marker);
     }
 
     function syncVisibility() {
@@ -181,7 +270,12 @@ const script = `<script id="site-sidebar-toggle">
         var timer = null;
         window.addEventListener('resize', function () {
             clearTimeout(timer);
-            timer = setTimeout(syncVisibility, 120);
+            timer = setTimeout(function () {
+                // 窗口缩到手机宽度时要把搬过去的卡片还原，否则右栏虽然被 CSS 隐藏，
+                // 卡片却还留在左栏里，手机页面会莫名其妙变长
+                apply();
+                syncVisibility();
+            }, 120);
         });
     }
 
