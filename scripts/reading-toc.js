@@ -293,7 +293,8 @@ const script = `<script id="site-reading-toc-script">
     }
 
     /* ── 右栏要塞进一屏 ───────────────────────────────────────
-       文章顶部这个状态下页面已经不会滚了，右栏超出的部分就是永远看不见。
+       两个状态用同一套裁剪：进出阅读态时右栏的卡片、条数、高度都不变，
+       只有正文那一列在换滚动方式。
        「最新文章」只留一条（完整列表太长，一条就把标签 / 日历挤到屏外）；
        一条都放不下就整张卡片收起，再不行把贡献日历也收掉 */
     /* 「最新文章」是最长的一张，放到右栏最下面：
@@ -332,14 +333,18 @@ const script = `<script id="site-reading-toc-script">
             calendar.style.display = '';
         }
 
-        /* 阅读态右栏是固定高度、卡片自己滚，不用裁 */
-        if (body.classList.contains('is-reading')) {
-            return;
-        }
-
+        /* 阅读态右栏是固定高度（内容多时卡片内部滚），
+           所以“放不放得下”要看最后一张卡片自己的底边，不能看列元素的底边 */
         var limit = window.innerHeight - 24;
         var fits = function () {
-            return right.getBoundingClientRect().bottom <= limit;
+            var kids = right.children;
+            var last = null;
+            for (var k = 0; k < kids.length; k++) {
+                if (kids[k].offsetHeight > 0) {
+                    last = kids[k];
+                }
+            }
+            return !last || last.getBoundingClientRect().bottom <= limit;
         };
 
         if (fits()) {
