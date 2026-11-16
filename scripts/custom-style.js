@@ -128,17 +128,28 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .content > blockq
 }
 
 /* 文章顶部的元信息（时间 / 分类 / 阅读时长 / 访问量）
-   主题是 flex + nowrap + overflow-x:auto，窄屏会挤出横向滚动条。
+   主题是 flex + nowrap + overflow-x:auto，窄屏会挤出横向滚动条；
    .level-left 是内层 flex 容器，要让它能收缩（min-width:0）才真的换行 */
 .article-meta.level,
 .article-meta.level .level-left {
     flex-wrap: wrap;
-    row-gap: .25rem;
+    row-gap: .375rem;
 }
 
 .article-meta.level > .level-left {
     flex: 1 1 0;
     min-width: 0;
+}
+
+/* 元信息单独划成一个浅色小条：浅底 + 圆角 + 内边距，
+   和下方标题之间留出明显间距，不再是一行小字直接贴在标题上方。
+   主题原规则是 article.article .article-meta（特异性 0,2,1），
+   这里必须带 body 才能压过去 */
+body .article-meta.level {
+    margin: 0 0 1.25rem;
+    padding: .5rem .875rem;
+    border-radius: .5rem;
+    background: rgba(128, 128, 128, .1);
 }
 
 /* TOC 卡片标题：主题语言包里写的是「目录」，和左栏的
