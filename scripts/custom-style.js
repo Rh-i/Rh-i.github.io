@@ -477,26 +477,23 @@ body .footer .level-end {
        中间那一段正文反而比侧栏还窄，缩放时明显一跳 */
     --site-side: clamp(240px, 18vw, 340px);
 
-    /* 卡片内边距：同样线性，移动端约 15/11px，1440 约 39/43px */
+    /* 卡片内边距：同样线性，移动端约 14/11px，1440 约 38/42px */
     --site-pad-y: clamp(0.9375rem, 2.2vw + 0.45rem, 2.75rem);
     --site-pad-x: clamp(0.6875rem, 3vw, 3rem);
-
-    /* 正文宽带上限：按「同高度的 16:9 屏幕的 80%」封顶。
-       16:9 屏幕上它正好等于 80vw → 不生效（留白就是 10%）；
-       只有比 16:9 更宽的带鱼屏才会收住正文宽度。
-       下限 1024px 防止矮窗口（例如 900×400）被算得过窄 */
-    --site-max: max(calc(80vh * 16 / 9), 1024px);
 }
 
-/* 消费变量：横向留白只由 --site-gutter 一处决定
-   Bulma 的 .container 是 width:auto + flex-grow:1，写 width 无效，只能靠 max-width */
+/* 消费变量：横向留白只由 --site-gutter 一处决定。
+   Bulma 的 .container 是 width:auto + flex-grow:1，写 width 无效，只能靠 max-width。
+   不再额外设“正文最大宽度”：之前那个按 80vh 算的上限会让布局随“高度”变 ——
+   宽度固定 2500px 时，高度从 1500 拖到 500，80vh 只剩 400px，正文会被硬压到 1024px。
+   纯粹按宽度算 10% 留白，横竖两个方向都是连续的 */
 body .section {
     padding-left: 0;
     padding-right: 0;
 }
 
 body:is(.is-1-column, .is-2-column, .is-3-column) .container {
-    max-width: min(calc(100% - 2 * var(--site-gutter)), var(--site-max));
+    max-width: calc(100% - 2 * var(--site-gutter));
 }
 
 body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .card-content {
