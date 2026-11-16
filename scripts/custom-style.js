@@ -278,9 +278,62 @@ body > .navbar .navbar-end > .navbar-item {
 }
 
 /* 收进汉堡按钮后，菜单区里只剩「汉堡 + 右侧图标」，
-   用 margin-left:auto 把它们整组推到最右边，和展开时右对齐的位置一致 */
+   用 margin-left:auto 把它们整组推到最右边，和展开时右对齐的位置一致。
+   顺带把主题那个整格子的深色底改成圆角浅底，不要顶到导航栏上下边 */
 body > .navbar .navbar-toggle {
     margin-left: auto;
+    margin-block: .375rem;
+    background: transparent;
+    border-radius: 8px;
+    transition: background-color .15s, color .15s;
+}
+
+body > .navbar .navbar-toggle:hover,
+body > .navbar .navbar-toggle:focus-visible {
+    background: rgba(128, 128, 128, .18);
+}
+
+body > .navbar .navbar-toggle[aria-expanded="true"] {
+    background: rgba(128, 128, 128, .18);
+    color: #3273dc;
+}
+
+/* 汉堡菜单展开后的样子。
+   主题把菜单项塞在导航栏右边一个 227px 宽的小列里、还水平居中，显得又窄又挤。
+   这里改成：贴着导航栏下沿铺满整行的一整块面板，条目左对齐、带悬停底色。
+   绝对定位（相对 .navbar-container）所以不会把导航栏本身撑高 */
+body > .navbar.is-collapsed .navbar-start {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    width: auto;
+    height: auto;
+    align-items: stretch;
+    max-height: calc(100vh - 6rem);
+    overflow-y: auto;
+    padding: .5rem .5rem .625rem;
+    /* 跟随主题的亮/暗配色：父元素 .navbar-menu 和导航栏同色 */
+    background: inherit;
+    border-top: 1px solid rgba(128, 128, 128, .16);
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, .18);
+    z-index: 10;
+}
+
+body > .navbar.is-collapsed .navbar-start > .navbar-item {
+    width: 100%;
+    justify-content: flex-start;
+    padding: .6rem .875rem;
+    border-radius: 8px;
+    font-size: .95rem;
+    line-height: 1.4;
+    transition: background-color .15s, color .15s;
+}
+
+body > .navbar.is-collapsed .navbar-start > .navbar-item:hover,
+body > .navbar.is-collapsed .navbar-start > .navbar-item:focus-visible {
+    background: rgba(128, 128, 128, .16);
 }
 
 /* 页脚用和导航栏同一套逻辑：左边信息、右边图标，先保持一行，
@@ -308,6 +361,25 @@ body .footer .level-end {
     flex: 0 0 auto;
     margin-left: auto;
     margin-right: auto;
+}
+
+/* 窄屏（放不下一行时）整体改成一列居中：logo / 版权文字 / 图标都居中 */
+@media screen and (max-width: 519px) {
+    body .footer .container > .level {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    body .footer .level-start {
+        flex: 0 0 auto;
+        width: 100%;
+        text-align: center;
+    }
+
+    body .footer .level-end {
+        margin: 0;
+    }
 }
 
 
