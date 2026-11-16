@@ -54,44 +54,21 @@ body.sb-right-hidden #sb-toggle-right {
     border-radius: 6px 0 0 6px;
 }
 
-/* 侧栏收起 / 展开的过渡：不用 display:none 硬切，
-   把宽度、内边距、外边距一起缩到 0，同时淡出并微移，正文会跟着回弹 */
-@media screen and (min-width: 768px) {
-    body .column-left,
-    body .column-right {
-        transition: opacity .24s ease, transform .26s ease, width .28s cubic-bezier(.4, 0, .2, 1),
-            padding .28s cubic-bezier(.4, 0, .2, 1), margin .28s cubic-bezier(.4, 0, .2, 1);
-    }
-
-    body.sb-right-hidden .column-right,
-    body.sb-left-hidden .column-left {
-        width: 0 !important;
-        max-width: 0 !important;
-        min-width: 0 !important;
-        flex-basis: 0 !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        opacity: 0;
-        overflow: hidden;
-        pointer-events: none;
-    }
-
-    body.sb-left-hidden .column-left {
-        transform: translateX(-14px);
-    }
-
-    body.sb-right-hidden .column-right {
-        transform: translateX(14px);
-    }
+body.sb-right-hidden .column-right {
+    display: none !important;
 }
 
 /* 收起左栏 —— 不能简单地给 .column-left 加 display:none：
    目录卡片（#toc）就住在左栏里，手机宽度下主题把「目录」按钮点开的浮层
    也是它（#toc.is-active + #toc-mask）。祖先一旦 display:none，
    浮层永远出不来，表现为「点了没反应、页面只剩遮罩」。
-   所以：≥768 整列收窄到 0（上面那段）；<768 只藏卡片，列留着。 */
+   所以：≥768 整列藏掉（那里没有目录按钮）；<768 只藏卡片，列留着。 */
+@media screen and (min-width: 768px) {
+    body.sb-left-hidden .column-left {
+        display: none !important;
+    }
+}
+
 @media screen and (max-width: 767px) {
     body.sb-left-hidden .column-left > :not([data-type="toc"]) {
         display: none !important;

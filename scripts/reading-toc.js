@@ -21,30 +21,9 @@
 
 const style = `<style id="site-reading-toc">
 @media screen and (min-width: 769px) {
-    /* ── 左栏：目录吃掉剩余高度 ──────────────────────────
-       左栏高度压在「视口 - 导航栏 - 上下留白」以内，
-       分类 / 标签这类小卡片按自身高度完整显示（不允许被压缩），
-       剩下的空间全部给目录，目录自己滚 —— 大约占 3/4 */
-    body .column-left {
-        display: flex;
-        flex-direction: column;
-        max-height: calc(100vh - 7.5rem);
-    }
-
-    body .column-left > .widget:not([data-type="toc"]) {
-        flex: 0 0 auto;
-    }
-
-    body .column-left > .widget[data-type="toc"] {
-        flex: 1 1 auto;
-        min-height: 9rem;
-        display: flex;
-        flex-direction: column;
-    }
-
+    /* 目录卡片内容统一限高，长目录在卡片里自己滚 */
     body .column-left > .widget[data-type="toc"] .card-content {
-        flex: 1 1 auto;
-        min-height: 0;
+        max-height: min(52vh, 26rem);
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-width: thin;
@@ -60,26 +39,42 @@ const style = `<style id="site-reading-toc">
         border-radius: 3px;
     }
 
-    /* ── 卡片出现 / 消失都用同一套缓动，避免硬切 ───────── */
-    body .column-left > .widget,
-    body .column-right > .widget {
-        transition: opacity .25s ease, transform .25s ease, max-height .35s cubic-bezier(.4, 0, .2, 1),
-            margin .35s cubic-bezier(.4, 0, .2, 1);
+    /* ── 只有「右栏还在、卡片没被搬进左栏」时才把左栏压进一屏 ────
+       分类 / 标签保持自身高度完整显示，剩下的高度全给目录（约 3/4）；
+       搬动过的左栏（.sb-migrated，右栏被隐藏时的「更多」那组卡片）
+       不能压高度，否则下面那几大块卡片会被截掉、根本看不到 */
+    body .column-left:not(.sb-migrated) {
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 7.5rem);
     }
 
-    /* 阅读态：简介卡片向上收起 + 淡出，目录顶到最上面 */
-    body .column-left > .widget[data-type="profile"] {
-        max-height: 2000px;
-        transform-origin: top center;
+    body .column-left:not(.sb-migrated) > .widget:not([data-type="toc"]) {
+        flex: 0 0 auto;
     }
 
+    body .column-left:not(.sb-migrated) > .widget[data-type="toc"] {
+        flex: 1 1 auto;
+        min-height: 9rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body .column-left:not(.sb-migrated) > .widget[data-type="toc"] .card-content {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+    }
+
+    /* 搬过卡片的左栏：不限高，但阅读时目录依然排到最前面 */
+    body.is-reading .column-left.sb-migrated {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* 阅读态：简介卡片直接收起，目录顶到最上面（不做过渡） */
     body.is-reading .column-left > .widget[data-type="profile"] {
-        max-height: 0;
-        opacity: 0;
-        transform: translateY(-10px) scale(.985);
-        margin-bottom: 0;
-        overflow: hidden;
-        pointer-events: none;
+        display: none;
     }
 
     body.is-reading .column-left > .widget[data-type="toc"] {
