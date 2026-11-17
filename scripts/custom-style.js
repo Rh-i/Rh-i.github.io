@@ -473,6 +473,15 @@ body .footer .level-end {
     /* 侧栏卡片之间的间距。取 3rem(42px) = 顶栏底边到第一张卡片的距离，
        让“卡片到顶栏”和“卡片到卡片”看起来一样宽 */
     --site-card-gap: 3rem;
+
+    /* 顶栏高度：吸附/吸顶的基准线（顶栏是 sticky，滚起来后它一直占住这一段）。
+       layout.js 里所有 sticky 的 top 都由它推导，别处不要再写死 6.5rem */
+    --site-top: 6.5rem;
+
+    /* Bulma .column 的内边距（0.75rem = 10.5px）。
+       栏目页是「整栏吸顶」，栏自己带着这段留白，所以它的 top 直接取 --site-top；
+       文章页是「卡片自己吸顶」，得再加上这段留白，首卡才和正文卡片同一条线 */
+    --site-card-pad: 0.75rem;
 }
 
 /* 消费变量：横向留白只由 --site-gutter 一处决定。

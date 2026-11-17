@@ -388,7 +388,7 @@ plugins:
     prefetch: true
     # Show a progress bar at top of the page on page loading
     # 关掉：文章页真正的滚动发生在 .column-main 里，Pace 量不到，还会被评论组件
-    # 拖住卡在某个百分比；顶部那条进度条改由 scripts/reading-toc.js 按阅读进度画
+    # 拖住卡在某个百分比；顶部那条进度条改由 scripts/layout.js 按阅读进度画
     progressbar: false
     # Statcounter statistics
     # https://statcounter.com/

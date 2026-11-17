@@ -59,13 +59,30 @@ const script = giscus ? `<script id="site-page-comment">
 (function () {
     'use strict';
 
-    /* 只给这三个栏目页加：/archives/、/categories/、/tags/ */
-    var PAGES = ['/archives/', '/categories/', '/tags/'];
+    /* 只给这三个栏目的首页加：/archives/、/categories/、/tags/。
+       判断用「前缀 + 前缀后面没有别的路径段」，而不是把完整路径写死：
+       子页面（/tags/Hexo/、/archives/2026/11/）自动排除，
+       避免每个标签 / 每个月都生成一个空讨论。
+       去掉结尾多余的斜杠用 while 手写，不用正则 ——
+       模板字符串会吃掉一层反斜杠，写成 /\\/+$/ 会被解析成 //+$/ 直接语法错误 */
+    var PREFIXES = ['/archives/', '/categories/', '/tags/'];
     var CFG = ${JSON.stringify(giscus)};
 
+    function normalize(path) {
+        while (path.length > 1 && path.charAt(path.length - 1) === '/') {
+            path = path.slice(0, -1);
+        }
+        return path + '/';
+    }
+
     function isTarget() {
-        var path = window.location.pathname.replace(/\\/+$/, '/');
-        return PAGES.indexOf(path) >= 0;
+        var path = normalize(window.location.pathname);
+        for (var i = 0; i < PREFIXES.length; i++) {
+            if (path === PREFIXES[i]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /* 跟着站点当前明暗选 giscus 主题（切换主题后由 giscus-theme-sync 接手） */
@@ -127,4 +144,7 @@ const script = giscus ? `<script id="site-page-comment">
 hexo.extend.injector.register('head_end', style, 'default');
 if (script) {
     hexo.extend.injector.register('body_end', script, 'default');
+} else {
+    /* 静默跳过最难排查：换了评论系统或漏填 categoryId 时，这里能立刻看到原因 */
+    hexo.log.info('[page-comments] 评论不是 giscus（或缺少 repoId / categoryId），跳过栏目页评论注入');
 }
