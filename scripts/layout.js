@@ -58,9 +58,28 @@ html {
     }
 }
 
-/* 折叠右栏后搬过来的卡片中间那条「更多」隔断：新版布局里用不上 */
-body.col-scroll .column-left > .sb-split {
+/* 「更多」隔断（右栏收起 / 窄屏时，搬进左栏的那组卡片上方的开关）：
+   只在文章页藏掉 —— 文章页阅读时左栏只要简介 / 本文分类标签 / 目录，
+   搬过来的整组卡片（含这个开关）都不显示。
+   其它页面必须留着：sidebar-toggle.js 默认把搬过来的卡片折在这条开关后面，
+   开关一藏，那组卡片就既看不见也展不开了 */
+body.is-post-page .column-left > .sb-split {
     display: none !important;
+}
+
+/* 窗口矮的时候，简介卡 + 「更多」会超出吸顶栏的高度，被挤到滚动区外面
+   （栏的滚动条默认又是隐形的），看起来就是「更多没出现」。
+   把它钉在栏的底边，并给一层毛玻璃底：压到卡片上也能看清，
+   不会像一行文字浮在别人的数字上 */
+body.col-scroll .column-left > .sb-split {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin-top: .75rem;
+    padding: .4rem .5rem;
+    border-radius: 8px;
+    background: rgba(128, 128, 128, .12);
+    backdrop-filter: blur(6px);
 }
 
 /* 「最新文章」只在文章页显示。按 data-type 藏、不写父级：
