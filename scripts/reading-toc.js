@@ -300,6 +300,15 @@ const script = `<script id="site-reading-toc-script">
     var el = { main: null, left: null, right: null, toc: null, bar: null };
     var line = 240;    /* 手机档：正文标题区滚过多少像素算开读 */
 
+    /* 当前真正在滚的容器。null 表示整页在滚。
+       宽屏时滚动发生在 .column-main 里，窄屏（及手机）是整页——
+       干脆不猜，谁滚了就用谁（见 onScroll） */
+    var scroller = null;
+
+    /* 版本标记：写在进度条元素的 data-build 上。
+       浏览器缓存了旧版页面时一眼就能看出来跑的是哪一版 */
+    var BUILD = 'bar-4';
+
     function cache() {
         el.main = document.querySelector('.column-main');
         el.left = document.querySelector('.column-left');
@@ -345,18 +354,64 @@ const script = `<script id="site-reading-toc-script">
             return;
         }
 
-        /* 正文列和整页各算一个比例，取大的那个：
-           究竟是哪个容器在滚，各浏览器 / 各窗口宽度下并不一致，
-           取大值就不用去猜，谁滚了进度都往前走 */
-        var done = pageRatio();
-        if (mainScrolls()) {
-            done = Math.max(done, ratio(el.main.scrollTop, el.main.scrollHeight - el.main.clientHeight));
+        /* 看「真正在滚的那个容器」滚了多少；没认定容器就看整页 */
+        if (scroller && (!document.contains(scroller) || scroller.scrollHeight - scroller.clientHeight <= 1)) {
+            scroller = null;        /* 被 pjax 换掉 / 已经没得滚了 */
         }
 
-        done = Math.max(0, Math.min(1, done));
+        var done = scroller
+            ? ratio(scroller.scrollTop, scroller.scrollHeight - scroller.clientHeight)
+            : pageRatio();
+
+        /* 兜底：还在最顶上就必须是空条（分母算错、残留 scrollTop 都不该让它满格）；
+           算出 NaN 也当 0 */
+        if (!(done > 0)) {
+            done = 0;
+        } else if (scrollPos() <= 0) {
+            done = 0;
+        }
+
+        done = Math.min(1, done);
         el.bar.style.width = (done * 100).toFixed(2) + '%';
         /* 留在 DOM 上，方便在控制台一眼看出脚本算出的比例 */
         el.bar.setAttribute('data-progress', done.toFixed(4));
+        el.bar.setAttribute('data-build', BUILD);
+        debugBadge(done);
+    }
+
+    /* ── 排错用的小角标 ──────────────────────────
+       只有 URL 上带 ?debug=1 才出现，平时完全不存在。
+       它把「谁在滚、分母多大、当前位置、算出的比例」直接摊在屏幕上，
+       免得只能靠猜 */
+    var DEBUG = /(^|[?&])debug=1(&|$)/.test(window.location.search);
+
+    function debugBadge(done) {
+        if (!DEBUG) {
+            return;
+        }
+        var box = document.getElementById('site-debug');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'site-debug';
+            box.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:3000;'
+                + 'font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre;'
+                + 'background:rgba(0,0,0,.82);color:#9be89b;padding:6px 8px;border-radius:4px;'
+                + 'pointer-events:none;';
+            document.body.appendChild(box);
+        }
+
+        var room = scroller
+            ? scroller.scrollHeight - scroller.clientHeight
+            : document.documentElement.scrollHeight - window.innerHeight;
+
+        box.textContent = [
+            'build   ' + BUILD,
+            'scroller ' + (scroller ? (scroller.className || scroller.tagName) : 'page'),
+            'room    ' + Math.round(room),
+            'pos     ' + Math.round(scrollPos()),
+            'progress ' + done.toFixed(4),
+            'vw/vh   ' + window.innerWidth + 'x' + window.innerHeight
+        ].join('\\n');
     }
 
     function ratio(pos, room) {
@@ -368,6 +423,25 @@ const script = `<script id="site-reading-toc-script">
             document.documentElement.scrollHeight - window.innerHeight);
     }
 
+    /* 谁在滚就记谁：scroll 事件的目标就是那个滚动容器。
+       只接受「包含正文卡片」的容器（左栏目录、代码块自己滚时不算），
+       目标是文档本身就是整页在滚 */
+    function trackScroller(event) {
+        var t = event.target;
+        var art = el.main && el.main.querySelector('.article');
+
+        if (!t || t === document || t === document.body || t === document.documentElement) {
+            scroller = null;
+            return;
+        }
+        if (t.nodeType !== 1 || !art) {
+            return;
+        }
+        if ((t === el.main || t.contains(art)) && t.scrollHeight - t.clientHeight > 1) {
+            scroller = t;
+        }
+    }
+
     /* 直接量、直接画：scroll 事件浏览器本来就会合并到一帧一次，
        再套一层 requestAnimationFrame 反而会被“标签页不可见”卡住，
        一卡住就再也不更新了 */
@@ -375,8 +449,11 @@ const script = `<script id="site-reading-toc-script">
         paintProgress();
     }
 
-    /* 当前位置：桌面档看正文列的 scrollTop，手机档看页面 */
+    /* 当前位置：跟着当前认定的滚动容器 */
     function scrollPos() {
+        if (scroller && document.contains(scroller)) {
+            return scroller.scrollTop;
+        }
         return mainScrolls() ? el.main.scrollTop : window.pageYOffset;
     }
 
@@ -818,7 +895,9 @@ const script = `<script id="site-reading-toc-script">
     });
 
     /* scroll 不冒泡，但捕获阶段能同时收到窗口和正文列的滚动 */
-    document.addEventListener('scroll', function () {
+    document.addEventListener('scroll', function (event) {
+        /* 先认出是谁在滚，再按它算进度 */
+        trackScroller(event);
         updateProgress();
         apply();
     }, { capture: true, passive: true });
@@ -874,6 +953,11 @@ const script = `<script id="site-reading-toc-script">
     function init() {
         cache();
         measure();
+
+        /* 还没滚动过，先按布局猜一个：正文列能滚就它，否则整页。
+           之后一律以 scroll 事件的目标为准 */
+        scroller = (mainScrolls() && el.main.scrollHeight - el.main.clientHeight > 1) ? el.main : null;
+
         /* 默认全部展开：只有用户亲手点过「收起」才收 */
         setMeta(stored(META_STATE) === 'hidden');
         setTocFlat(stored(TOC_STATE) === 'flat');
