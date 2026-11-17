@@ -161,8 +161,40 @@ body .widget[data-type="github_calendar"] {
         flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
+        /* 只要竖条：以前只写 overflow-y，overflow-x 会被算成 auto，
+           内容稍微宽一点底部就冒出横向拖动条 */
+        overflow-x: hidden;
         overscroll-behavior: contain;
-        scrollbar-width: thin;
+        /* 槽位常驻，条宽前后一致 —— 以前是「悬停才换成细条」，
+           条一出现就挤掉 6~10px 内容宽度，卡片内容会抽一下 */
+        scrollbar-gutter: stable;
+    }
+
+    /* Firefox：细条、颜色恒定（它不支持 ::-webkit-scrollbar） */
+    @supports not selector(::-webkit-scrollbar) {
+        body.col-scroll .column-left > [data-sticky="left"] > .card-content,
+        body.col-scroll .column-right > [data-sticky="right"] > .card-content {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(128, 128, 128, .3) transparent;
+        }
+    }
+
+    /* Chromium / Safari：固定 6px 的槽，拇指常驻淡灰，悬停只加深颜色（不改尺寸） */
+    body.col-scroll .column-left > [data-sticky="left"] > .card-content::-webkit-scrollbar,
+    body.col-scroll .column-right > [data-sticky="right"] > .card-content::-webkit-scrollbar {
+        width: 6px;
+        height: 0;
+    }
+
+    body.col-scroll .column-left > [data-sticky="left"] > .card-content::-webkit-scrollbar-thumb,
+    body.col-scroll .column-right > [data-sticky="right"] > .card-content::-webkit-scrollbar-thumb {
+        background: rgba(128, 128, 128, .3);
+        border-radius: 3px;
+    }
+
+    body.col-scroll .column-left > [data-sticky="left"] > .card-content:hover::-webkit-scrollbar-thumb,
+    body.col-scroll .column-right > [data-sticky="right"] > .card-content:hover::-webkit-scrollbar-thumb {
+        background: rgba(128, 128, 128, .55);
     }
 }
 
@@ -178,32 +210,38 @@ body .widget[data-type="github_calendar"] {
         /* 下沿和页面上边一样留 --site-edge：滚到底时上下距离一致 */
         max-height: calc(100vh - var(--site-top, 6.5rem) - var(--site-edge, 3rem));
         overflow-y: auto;
+        /* 只要竖条：overflow-x 不写就会被算成 auto，底部冒出横向拖动条 */
+        overflow-x: hidden;
         overscroll-behavior: contain;
-        scrollbar-width: none;
+        /* 槽位常驻、条宽一致，悬停只变颜色，卡片不会被挤窄 */
+        scrollbar-gutter: stable;
     }
 
-    /* 滚动条默认隐形，鼠标移上去才露出来（不挡视线，又能看出还能滚） */
-    body.col-scroll .column-left[data-sticky-col]:hover,
-    body.col-scroll .column-right[data-sticky-col]:hover {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(128, 128, 128, .45) transparent;
+    /* Firefox：细条、颜色恒定 */
+    @supports not selector(::-webkit-scrollbar) {
+        body.col-scroll .column-left[data-sticky-col],
+        body.col-scroll .column-right[data-sticky-col] {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(128, 128, 128, .3) transparent;
+        }
     }
 
+    /* Chromium / Safari：固定 6px 的槽，拇指常驻淡灰，悬停只加深颜色 */
     body.col-scroll .column-left[data-sticky-col]::-webkit-scrollbar,
     body.col-scroll .column-right[data-sticky-col]::-webkit-scrollbar {
-        width: 0;
+        width: 6px;
         height: 0;
     }
 
-    body.col-scroll .column-left[data-sticky-col]:hover::-webkit-scrollbar,
-    body.col-scroll .column-right[data-sticky-col]:hover::-webkit-scrollbar {
-        width: 6px;
+    body.col-scroll .column-left[data-sticky-col]::-webkit-scrollbar-thumb,
+    body.col-scroll .column-right[data-sticky-col]::-webkit-scrollbar-thumb {
+        background: rgba(128, 128, 128, .3);
+        border-radius: 3px;
     }
 
     body.col-scroll .column-left[data-sticky-col]:hover::-webkit-scrollbar-thumb,
     body.col-scroll .column-right[data-sticky-col]:hover::-webkit-scrollbar-thumb {
-        background: rgba(128, 128, 128, .45);
-        border-radius: 3px;
+        background: rgba(128, 128, 128, .55);
     }
 }
 
