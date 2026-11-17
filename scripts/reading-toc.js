@@ -206,17 +206,20 @@ body.col-scroll .column-left > .sb-split {
        而且评论卡片也在这条滚动区域里，滚到底就能看见，不会出现
        「两张卡片互相让位、评论永远够不着」那种毛病 */
     body.col-scroll .column-main {
+        /* 吸附点比左右两栏的顶边（6.5rem）再下移 .75rem，也就是直接贴在
+           「左栏内边距之外」那一行上：左右两栏首卡的 top 是
+           6.5rem + .75rem，这里不靠 padding / border 顶出来，所以不会被
+           浏览器按设备像素取整（border 10.5 会被取成 10，差 0.5px），
+           三栏首卡顶边严格相等 */
         position: sticky;
-        top: 6.5rem;
-        /* 高度和左右两栏一致，底边自然对齐 */
-        height: calc(100vh - 10.25rem);
-        max-height: calc(100vh - 10.25rem);
+        top: calc(6.5rem + .75rem);
+        /* 高度跟着下移量一起减掉 .75rem，底边仍和左右两栏一致 */
+        height: calc(100vh - 11rem);
+        max-height: calc(100vh - 11rem);
         overflow-y: auto;
-        /* 顶部的 .75rem 不能用 padding：scroll 容器的内边距是“内容的一部分”，
-           一滚就跟着走了，正文卡片会顶到 91，比左右两栏高出一块。
-           改成透明边框（边框在滚动区域之外），滚动时卡片顶边永远停在 101 */
+        /* 顶部留白不能用 padding：scroll 容器的内边距是“内容的一部分”，
+           一滚就跟着走了，正文卡片会顶到顶栏下面 */
         padding-top: 0;
-        border-top: .75rem solid transparent;
         scrollbar-width: thin;
         scrollbar-color: rgba(128, 128, 128, .35) transparent;
     }
@@ -296,6 +299,7 @@ const script = `<script id="site-reading-toc-script">
        pjax 会整块换掉 DOM，init 时重新取一次；滚动回调里不再查 DOM */
     var el = { main: null, left: null, right: null, toc: null, bar: null };
     var line = 240;    /* 手机档：正文标题区滚过多少像素算开读 */
+    var frame = 0;     /* 进度条的 rAF 句柄，0 表示本帧还没排 */
 
     function cache() {
         el.main = document.querySelector('.column-main');
@@ -337,21 +341,37 @@ const script = `<script id="site-reading-toc-script">
        里，它量不到，还会被评论组件拖住卡在某个百分比。
        所以 _config.icarus.yml 里 progressbar 关掉，这里按「正文列滚了多少」
        自己画一条（手机上退化成整页进度） */
-    function updateProgress() {
+    function paintProgress() {
         if (!el.bar) {
             return;
         }
+        frame = 0;
 
-        var done;
+        var pageRoom = document.documentElement.scrollHeight - window.innerHeight;
+        var done = 0;
+        var room = 0;
+
         if (mainScrolls()) {
-            var room = el.main.scrollHeight - el.main.clientHeight;
-            done = room > 0 ? el.main.scrollTop / room : 0;
+            room = el.main.scrollHeight - el.main.clientHeight;
+            /* 正文列刚好一屏（没得滚）时别把进度条钉在 0：那时真正在滚的是
+               整页，跟着页面走 */
+            done = room > 1 ? el.main.scrollTop / room
+                : (pageRoom > 1 ? window.pageYOffset / pageRoom : 0);
         } else {
-            var pageRoom = document.documentElement.scrollHeight - window.innerHeight;
-            done = pageRoom > 0 ? window.pageYOffset / pageRoom : 0;
+            done = pageRoom > 1 ? window.pageYOffset / pageRoom : 0;
         }
 
-        el.bar.style.transform = 'scaleX(' + Math.max(0, Math.min(1, done)).toFixed(4) + ')';
+        el.bar.style.transform = 'scaleX('
+            + Math.max(0, Math.min(1, done)).toFixed(4) + ')';
+    }
+
+    /* 滚动事件一秒能来上百次，每帧只算一次就够，省得反复读 scrollHeight
+       触发同步布局（滚动时读布局最容易掉帧） */
+    function updateProgress() {
+        if (!el.bar || frame) {
+            return;
+        }
+        frame = requestAnimationFrame(paintProgress);
     }
 
     /* 当前位置：桌面档看正文列的 scrollTop，手机档看页面 */
@@ -789,7 +809,11 @@ const script = `<script id="site-reading-toc-script">
 
     /* 用户一旦自己滚轮 / 触摸 / 键盘滚动，就说明他要跟着正文看了，解锁 */
     ['wheel', 'touchstart', 'keydown'].forEach(function (type) {
-        window.addEventListener(type, unlock, { passive: true });
+        window.addEventListener(type, function () {
+            unlock();
+            /* 兜底：万一某个浏览器的 scroll 事件被合掉，滚轮也跟着刷新进度条 */
+            updateProgress();
+        }, { passive: true });
     });
 
     /* scroll 不冒泡，但捕获阶段能同时收到窗口和正文列的滚动 */
@@ -823,9 +847,13 @@ const script = `<script id="site-reading-toc-script">
         apply();
 
         /* 字体、图片、贡献日历脚本都可能把卡片晚一步撑高，高度一变就可能
-           从“放得下”变成“放不下”。这里在几个时间点再对一遍（每次几毫秒） */
+           从“放得下”变成“放不下”，进度条的分母也会变。这里在几个时间点
+           再对一遍（每次几毫秒） */
         [200, 600, 1200, 2000].forEach(function (ms) {
-            setTimeout(layoutColumns, ms);
+            setTimeout(function () {
+                layoutColumns();
+                updateProgress();
+            }, ms);
         });
     }
 
