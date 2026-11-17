@@ -470,18 +470,21 @@ body .footer .level-end {
     --site-pad-y: clamp(0.9375rem, 2.2vw + 0.45rem, 2.75rem);
     --site-pad-x: clamp(0.6875rem, 3vw, 3rem);
 
-    /* 侧栏卡片之间的间距。取 3rem(42px) = 顶栏底边到第一张卡片的距离，
-       让“卡片到顶栏”和“卡片到卡片”看起来一样宽 */
-    --site-card-gap: 3rem;
+    /* 侧栏卡片之间的间距。取 2.25rem(36px)：比 3rem 紧凑一点，
+       让「简介 + 分类 + 标签 + 目录」在常见的 1080p 窗口里能一屏装下，
+       侧栏就不会变成一个需要内部滚动的容器（贴底时也不容易被滚轮接管） */
+    --site-card-gap: 2.25rem;
 
     /* 顶栏高度：吸附/吸顶的基准线（顶栏是 sticky，滚起来后它一直占住这一段）。
        layout.js 里所有 sticky 的 top 都由它推导，别处不要再写死 6.5rem */
     --site-top: 6.5rem;
 
-    /* Bulma .column 的内边距（0.75rem = 10.5px）。
-       栏目页是「整栏吸顶」，栏自己带着这段留白，所以它的 top 直接取 --site-top；
-       文章页是「卡片自己吸顶」，得再加上这段留白，首卡才和正文卡片同一条线 */
-    --site-card-pad: 0.75rem;
+    /* Bulma .column 的内边距（0.75rem = 10.5px），也就是「首卡到栏盒顶边」的偏移 */
+    --site-inset: 0.75rem;
+
+    /* 页面内容到视口上/下边缘的呼吸空间（= .section 的上下 padding，42px）。
+       吸顶块的下沿也按它收：滚到页面最底时，上下距离和平时一致 */
+    --site-edge: 3rem;
 }
 
 /* 消费变量：横向留白只由 --site-gutter 一处决定。

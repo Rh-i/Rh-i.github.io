@@ -70,6 +70,19 @@ body:not(.is-post-page) .widget[data-type="recent-posts"] {
     display: none !important;
 }
 
+/* giscus 是异步加载的：到页面最底时它才撑高，页面高度一跳，
+   左右吸住的卡片就跟着“动一下”。先给它把位置占住。
+   文章页的主题评论区、栏目页自己插的评论区都命中这两个 id/类 */
+body .giscus,
+body #giscus-thread {
+    min-height: 440px;
+}
+
+/* 贡献日历也要等图片加载，同样先占位 */
+body .widget[data-type="github_calendar"] {
+    min-height: 190px;
+}
+
 /* ── 公共：三栏回到正常文档流（≥769px 才有侧栏）──────────────
    高度交给 flex 拉伸（和正文一样长），不要固定成 100vh：
    只有这样，柱子里最后那张卡片才能在文章任意位置继续吸住。
@@ -94,15 +107,28 @@ body:not(.is-post-page) .widget[data-type="recent-posts"] {
         overflow: visible;
     }
 
-    /* 卡片级吸顶：top = 顶栏下沿 + 栏内留白（首卡与正文卡片同一条线） */
-    body.col-scroll [data-sticky] {
+    /* 卡片级吸顶：top = 顶栏下沿 + 栏内留白（首卡与正文卡片同一条线）。
+       标记值带上了所属栏（left / right）：侧栏折叠时 sidebar-toggle.js 会把右栏
+       卡片搬到左栏，如果只写 [data-sticky]，搬过去的卡片还会吸顶，
+       和左栏的目录叠在一起。限定「还在原本那栏里」才生效 */
+    body.col-scroll .column-left > [data-sticky="left"],
+    body.col-scroll .column-right > [data-sticky="right"] {
         position: sticky;
-        top: calc(var(--site-top, 6.5rem) + var(--site-card-pad, 0.75rem));
+        top: calc(var(--site-top, 6.5rem) + var(--site-inset, 0.75rem));
+        /* 自身高度 + top 恒小于视口高 → 滚到页面最底时
+           不会被容器底边往上顶（那一下就是「到底时卡片动一下」），
+           下沿也留出和页面上边一样的 --site-edge */
+        max-height: calc(100vh - var(--site-top, 6.5rem) - var(--site-inset, 0.75rem) - var(--site-edge, 3rem));
+        /* 卡片本身不滚（圆角、阴影保持完整），只让里面的内容区滚 */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }
 
-    /* 文章页的目录：比一屏高时卡片内自己滚 */
-    body.col-scroll [data-sticky] > .card-content {
-        max-height: calc(100vh - var(--site-top, 6.5rem) - 5.5rem);
+    body.col-scroll .column-left > [data-sticky="left"] > .card-content,
+    body.col-scroll .column-right > [data-sticky="right"] > .card-content {
+        flex: 1 1 auto;
+        min-height: 0;
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-width: thin;
@@ -118,10 +144,17 @@ body:not(.is-post-page) .widget[data-type="recent-posts"] {
         position: sticky;
         top: var(--site-top, 6.5rem);
         align-self: start;
-        max-height: calc(100vh - var(--site-top, 6.5rem) - 1.5rem);
+        /* 下沿和页面上边一样留 --site-edge：滚到底时上下距离一致 */
+        max-height: calc(100vh - var(--site-top, 6.5rem) - var(--site-edge, 3rem));
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-width: none;
+        /* 万一样内还是被接管滚动了，让卡片整张对齐，不会“抖” */
+        scroll-snap-type: y proximity;
+    }
+
+    body.col-scroll [data-sticky-col] > .widget {
+        scroll-snap-align: start;
     }
 
     /* 滚动条默认隐形，鼠标移上去才露出来（不挡视线，又能看出还能滚） */
@@ -218,11 +251,13 @@ const script = `<script id="site-layout-script">
             ? STICKY_WIDGETS
             : ['.column-left', '.column-right'];
 
-        var attr = isPostPage() ? 'data-sticky' : 'data-sticky-col';
         for (var j = 0; j < targets.length; j++) {
             var list = document.querySelectorAll(targets[j]);
             for (var k = 0; k < list.length; k++) {
-                list[k].setAttribute(attr, '');
+                /* 值 = 它现在所在的栏：搬走后就不该再吸顶了 */
+                var inLeft = list[k].parentElement
+                    && list[k].parentElement.classList.contains('column-left');
+                list[k].setAttribute(isPostPage() ? 'data-sticky' : 'data-sticky-col', isPostPage() ? (inLeft ? 'left' : 'right') : '');
             }
         }
     }
