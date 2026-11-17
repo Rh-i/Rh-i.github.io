@@ -304,10 +304,12 @@ const script = `<script id="site-reading-toc-script">
        宽屏时滚动发生在 .column-main 里，窄屏（及手机）是整页——
        干脆不猜，谁滚了就用谁（见 onScroll） */
     var scroller = null;
+    var boundMain = null;   /* 已经挂过 scroll 监听的那个正文列 */
+    var events = 0;         /* 收到过多少个 scroll 事件（排错用） */
 
     /* 版本标记：写在进度条元素的 data-build 上。
        浏览器缓存了旧版页面时一眼就能看出来跑的是哪一版 */
-    var BUILD = 'bar-4';
+    var BUILD = 'bar-5';
 
     function cache() {
         el.main = document.querySelector('.column-main');
@@ -318,6 +320,13 @@ const script = `<script id="site-reading-toc-script">
         /* 正文那列的「固定高度 + 自己滚」样式靠这个类生效，
            脚本一解析就加上，避免首屏闪一下 */
         body.classList.toggle('col-scroll', !!el.main);
+
+        /* scroll 事件不冒泡，靠 document 的捕获阶段去接并不可靠
+           （实测有环境接不到）。直接挂在滚动元素自己身上最保险 */
+        if (el.main && el.main !== boundMain) {
+            boundMain = el.main;
+            el.main.addEventListener('scroll', onScroll, { passive: true });
+        }
 
         if (!el.bar) {
             el.bar = document.createElement('div');
@@ -410,6 +419,9 @@ const script = `<script id="site-reading-toc-script">
             'room    ' + Math.round(room),
             'pos     ' + Math.round(scrollPos()),
             'progress ' + done.toFixed(4),
+            'events  ' + events,
+            'main.st ' + Math.round(el.main ? el.main.scrollTop : -1),
+            'pageY   ' + Math.round(window.pageYOffset || 0),
             'vw/vh   ' + window.innerWidth + 'x' + window.innerHeight
         ].join('\\n');
     }
@@ -894,13 +906,18 @@ const script = `<script id="site-reading-toc-script">
         }, { passive: true });
     });
 
-    /* scroll 不冒泡，但捕获阶段能同时收到窗口和正文列的滚动 */
-    document.addEventListener('scroll', function (event) {
+    /* scroll 不冒泡，所以三个地方都挂：正文列自己（最可靠）、窗口、
+       以及 document 的捕获阶段（兜底：万一有别的容器在滚） */
+    function onScroll(event) {
+        events++;
         /* 先认出是谁在滚，再按它算进度 */
         trackScroller(event);
         updateProgress();
         apply();
-    }, { capture: true, passive: true });
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
 
     /* 整页不再滚了，键盘就失灵了：PgDn / 空格 / 上下键原来由浏览器滚窗口，
        现在窗口没得滚，得把它们转给正文列。输入框、按钮、链接上不抢 */
