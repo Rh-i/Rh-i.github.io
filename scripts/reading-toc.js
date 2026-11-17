@@ -49,6 +49,14 @@ body.col-scroll .column-left > .sb-split {
     display: none !important;
 }
 
+/* 「最新文章」只在文章页显示。
+   首页 / 搜索 / 归档 / 分类 / 标签 / 关于 这些栏目页不要它。
+   直接按 data-type 藏，不写父级：宽屏右栏那份、.column-right-shadow 里
+   给窄屏准备的那份、以及被搬进左栏的那份，一次性盖住 */
+body:not(.is-post-page) .widget[data-type="recent-posts"] {
+    display: none !important;
+}
+
 @media screen and (min-width: 769px) {
     /* ── 三栏都回到正常文档流，跟着整页一起滚 ──────────────
        高度交给 flex 拉伸（和正文一样长），不要固定成 100vh：
@@ -110,6 +118,12 @@ const script = `<script id="site-reading-toc-script">
 
         /* 布局样式挂在这个类上；没有正文列的页面（404 之类）不启用 */
         body.classList.toggle('col-scroll', !!el.main);
+
+        /* 文章页标记（permalink 就是 /posts/:title/）：「最新文章」卡只在它上面显示。
+           pjax 换页后 cache() 会重新算一次。
+           这里不用正则：模板字符串里的反斜杠会被吃掉一层，写成 indexOf 更稳 */
+        var path = window.location.pathname;
+        body.classList.toggle('is-post-page', path.indexOf('/posts/') === 0);
 
         if (!el.bar) {
             el.bar = document.createElement('div');
