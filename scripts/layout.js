@@ -69,20 +69,10 @@ body.sb-has-toc .column-left > .sb-split {
     display: none !important;
 }
 
-/* 窗口矮的时候，简介卡 + 「更多」会超出吸顶栏的高度，被挤到滚动区外面
-   （栏的滚动条默认又是隐形的），看起来就是「更多没出现」。
-   把它钉在栏的底边，并给一层毛玻璃底：压到卡片上也能看清，
-   不会像一行文字浮在别人的数字上 */
-body.col-scroll .column-left > .sb-split {
-    position: sticky;
-    bottom: 0;
-    z-index: 2;
-    margin-top: .75rem;
-    padding: .4rem .5rem;
-    border-radius: 8px;
-    background: rgba(128, 128, 128, .12);
-    backdrop-filter: blur(6px);
-}
+/* 「更多」按正常文档流排在简介卡片下面。
+   不要再写 position: sticky / bottom: 0：钉在栏底时它会浮起来压在简介卡片上
+   （毛玻璃底一叠，看着像盖在人家的头像和数字上）。窗口矮、放不下时
+   就让它跟着栏一起滚 —— 栏的滚动条现在是常驻可见的，能看出下面还有东西 */
 
 /* 「最新文章」只在文章页显示。按 data-type 藏、不写父级：
    宽屏右栏那份、.column-right-shadow 里给窄屏准备的那份、
