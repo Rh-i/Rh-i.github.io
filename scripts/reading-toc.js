@@ -37,17 +37,17 @@ body .column-left > .widget[data-type="toc"] > .toc-tools {
     display: none;
 }
 
-/* 顶部阅读进度条（替掉主题那条只会卡住的载入进度条，见脚本 updateProgress） */
+/* 顶部阅读进度条（替掉主题那条只会卡住的载入进度条，见脚本 updateProgress）
+   宽度由脚本直接写百分比，不用 transform: scaleX()：
+   缩放靠合成层，个别显卡驱动 / 缩放比例下会被忽略，条就一直是满的 */
 .site-progress {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
+    width: 0;
     height: 3px;
     z-index: 2000;
     background: #3273dc;
-    transform: scaleX(0);
-    transform-origin: 0 50%;
     pointer-events: none;
 }
 
@@ -299,7 +299,6 @@ const script = `<script id="site-reading-toc-script">
        pjax 会整块换掉 DOM，init 时重新取一次；滚动回调里不再查 DOM */
     var el = { main: null, left: null, right: null, toc: null, bar: null };
     var line = 240;    /* 手机档：正文标题区滚过多少像素算开读 */
-    var frame = 0;     /* 进度条的 rAF 句柄，0 表示本帧还没排 */
 
     function cache() {
         el.main = document.querySelector('.column-main');
@@ -345,33 +344,35 @@ const script = `<script id="site-reading-toc-script">
         if (!el.bar) {
             return;
         }
-        frame = 0;
 
-        var pageRoom = document.documentElement.scrollHeight - window.innerHeight;
-        var done = 0;
-        var room = 0;
-
+        /* 正文列和整页各算一个比例，取大的那个：
+           究竟是哪个容器在滚，各浏览器 / 各窗口宽度下并不一致，
+           取大值就不用去猜，谁滚了进度都往前走 */
+        var done = pageRatio();
         if (mainScrolls()) {
-            room = el.main.scrollHeight - el.main.clientHeight;
-            /* 正文列刚好一屏（没得滚）时别把进度条钉在 0：那时真正在滚的是
-               整页，跟着页面走 */
-            done = room > 1 ? el.main.scrollTop / room
-                : (pageRoom > 1 ? window.pageYOffset / pageRoom : 0);
-        } else {
-            done = pageRoom > 1 ? window.pageYOffset / pageRoom : 0;
+            done = Math.max(done, ratio(el.main.scrollTop, el.main.scrollHeight - el.main.clientHeight));
         }
 
-        el.bar.style.transform = 'scaleX('
-            + Math.max(0, Math.min(1, done)).toFixed(4) + ')';
+        done = Math.max(0, Math.min(1, done));
+        el.bar.style.width = (done * 100).toFixed(2) + '%';
+        /* 留在 DOM 上，方便在控制台一眼看出脚本算出的比例 */
+        el.bar.setAttribute('data-progress', done.toFixed(4));
     }
 
-    /* 滚动事件一秒能来上百次，每帧只算一次就够，省得反复读 scrollHeight
-       触发同步布局（滚动时读布局最容易掉帧） */
+    function ratio(pos, room) {
+        return room > 1 ? pos / room : 0;
+    }
+
+    function pageRatio() {
+        return ratio(window.pageYOffset || document.documentElement.scrollTop || 0,
+            document.documentElement.scrollHeight - window.innerHeight);
+    }
+
+    /* 直接量、直接画：scroll 事件浏览器本来就会合并到一帧一次，
+       再套一层 requestAnimationFrame 反而会被“标签页不可见”卡住，
+       一卡住就再也不更新了 */
     function updateProgress() {
-        if (!el.bar || frame) {
-            return;
-        }
-        frame = requestAnimationFrame(paintProgress);
+        paintProgress();
     }
 
     /* 当前位置：桌面档看正文列的 scrollTop，手机档看页面 */
