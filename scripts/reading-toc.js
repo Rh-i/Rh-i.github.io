@@ -822,6 +822,41 @@ const script = `<script id="site-reading-toc-script">
         apply();
     }, { capture: true, passive: true });
 
+    /* 整页不再滚了，键盘就失灵了：PgDn / 空格 / 上下键原来由浏览器滚窗口，
+       现在窗口没得滚，得把它们转给正文列。输入框、按钮、链接上不抢 */
+    document.addEventListener('keydown', function (event) {
+        if (!mainScrolls() || event.altKey || event.ctrlKey || event.metaKey) {
+            return;
+        }
+        var t = event.target;
+        var tag = t && t.tagName ? t.tagName.toUpperCase() : '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+            || tag === 'BUTTON' || tag === 'A' || (t && t.isContentEditable)) {
+            return;
+        }
+
+        var page = Math.round(el.main.clientHeight * 0.9);
+        var delta;
+        if (event.key === 'PageDown' || (event.key === ' ' && !event.shiftKey)) {
+            delta = page;
+        } else if (event.key === 'PageUp' || (event.key === ' ' && event.shiftKey)) {
+            delta = -page;
+        } else if (event.key === 'ArrowDown') {
+            delta = 60;
+        } else if (event.key === 'ArrowUp') {
+            delta = -60;
+        } else if (event.key === 'End' || event.key === 'Home') {
+            el.main.scrollTop = event.key === 'End' ? el.main.scrollHeight : 0;
+            event.preventDefault();
+            return;
+        } else {
+            return;
+        }
+
+        el.main.scrollTop += delta;
+        event.preventDefault();
+    });
+
     window.addEventListener('resize', function () {
         measure();
         layoutColumns();
