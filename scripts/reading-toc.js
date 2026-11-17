@@ -89,10 +89,13 @@ body:not(.is-post-page) .widget[data-type="recent-posts"] {
        滚动条默认隐形，鼠标移上去才露出来 */
     body.col-scroll:not(.is-post-page) .column-left,
     body.col-scroll:not(.is-post-page) .column-right {
+        /* 这里是「整栏」吸顶，栏自己有 10.5px 内边距，
+           所以吸到 6.5rem（顶栏下沿）才对得上正文卡片的位置；
+           加 .75rem 的话首卡会比正文低 10.5px */
         position: sticky;
-        top: calc(6.5rem + .75rem);
+        top: 6.5rem;
         align-self: start;
-        max-height: calc(100vh - 9rem);
+        max-height: calc(100vh - 8rem);
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-width: none;
