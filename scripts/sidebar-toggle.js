@@ -242,8 +242,10 @@ const script = `<script id="site-sidebar-toggle">
        就会出现「右栏卡片既没显示也没搬过来」「展开右栏按钮点了没反应」这类 bug。
        改这里时，务必同步 scripts/custom-style.js、scripts/layout.js 里的同名媒体查询 */
     var NARROW = '(max-width: 767px), (max-aspect-ratio: 3/4)';
-    /* 右栏真正能出现的条件：widescreen 宽度 且 不是竖屏 */
-    var WIDE = '(min-width: 1214px) and (min-aspect-ratio: 3/4)';
+    /* 右栏真正能出现的条件：≥1279 且不是竖屏。
+       1279 是主题自己的断点（实测 1278 仍是 display:none、1279 才 display:block），
+       这里少一像素就会出现「右栏根本出不来、却摆了个能展开它的按钮」的死按钮 */
+    var WIDE = '(min-width: 1279px) and (min-aspect-ratio: 3/4)';
 
     function read(key) {
         try {
@@ -284,7 +286,7 @@ const script = `<script id="site-sidebar-toggle">
     }
 
     // 右栏能不能出现：主题用 is-hidden-touch / is-hidden-desktop-only 把它
-    // 在 <1214（非 widescreen）的宽度下直接 display:none 了。
+    // 在 <1279（非 widescreen）的宽度下直接 display:none 了。
     // 这个区间里再给一个「展开右侧栏」按钮就是个死按钮（点完什么也不会变），
     // 所以按钮只在右栏真的能显示时才露出来
     function canShowRight() {
@@ -302,12 +304,21 @@ const script = `<script id="site-sidebar-toggle">
         return !!right && right.offsetWidth === 0;
     }
 
+    // 左栏里有没有目录卡片：有目录的地方（文章页）不摆「更多」和搬过来的那组卡片，
+    // 没有目录的地方（归档 / 分类 / 标签）才需要它们。样式侧的规则在 layout.js
+    function syncHasToc() {
+        var toc = document.querySelector('.column-left > [data-type="toc"]');
+        var has = !!toc && toc.getClientRects().length > 0;
+        document.body.classList.toggle('sb-has-toc', has);
+    }
+
     // 便宜的那半：切 body class、更新按钮文案。每次状态变化都跑
     function render() {
         var hiddenLeft = isHidden(LEFT);
         var hiddenRight = isHidden(RIGHT);
         document.body.classList.toggle('sb-left-hidden', hiddenLeft);
         document.body.classList.toggle('sb-right-hidden', hiddenRight);
+        syncHasToc();
 
         var leftBtn = document.getElementById('sb-toggle-left');
         if (leftBtn) {
@@ -381,14 +392,12 @@ const script = `<script id="site-sidebar-toggle">
                 return;
             }
 
-            // 默认值跟右栏状态联动：
-            //   · 手动收起了右栏 → 搬过来的这组卡片默认是收起的，只留一条「更多」
-            //   · 纯靠媒体查询隐藏（手机宽度）→ 默认展开，不然手机上要再点一下才看得到
-            // 用户点过「更多」就记住他的选择，不再被默认值覆盖
+            // 右栏一没了（手动收起 / 窗口太窄被主题藏掉），这组卡片默认收起，
+            // 只在最下面留一条「更多」——不要一出场就自己铺开把左栏撑长。
+            // 用户点过「更多」就记住他的选择（localStorage），不再被默认值覆盖；
+            // 重新展开右栏时这个记忆会被清掉，下次收起右栏又回到默认收起
             var stored = read(FOLDED);
-            var isFolded = stored === null
-                ? isHidden(RIGHT)
-                : stored === '0';            var divider = document.createElement('button');
+            var isFolded = stored === null ? true : stored === '0';            var divider = document.createElement('button');
             divider.type = 'button';
             divider.id = 'sb-split-marker';
             divider.className = 'sb-split' + (isFolded ? ' is-collapsed' : '');

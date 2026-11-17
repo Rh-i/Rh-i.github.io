@@ -59,11 +59,13 @@ html {
 }
 
 /* 「更多」隔断（右栏收起 / 窄屏时，搬进左栏的那组卡片上方的开关）：
-   只在文章页藏掉 —— 文章页阅读时左栏只要简介 / 本文分类标签 / 目录，
+   左栏已经有目录时藏掉 —— 文章页阅读时左栏只要简介 / 本文分类标签 / 目录，
    搬过来的整组卡片（含这个开关）都不显示。
-   其它页面必须留着：sidebar-toggle.js 默认把搬过来的卡片折在这条开关后面，
-   开关一藏，那组卡片就既看不见也展不开了 */
-body.is-post-page .column-left > .sb-split {
+   没有目录的页面（归档 / 分类 / 标签、以及没有小标题的文章）必须留着：
+   sidebar-toggle.js 默认把搬过来的卡片折在这条开关后面，
+   开关一藏，那组卡片就既看不见也展不开了。
+   body.sb-has-toc 由 sidebar-toggle.js 根据「左栏里有没有目录卡片」实时打上 */
+body.sb-has-toc .column-left > .sb-split {
     display: none !important;
 }
 
@@ -126,11 +128,12 @@ body .widget[data-type="github_calendar"] {
         overflow: visible;
     }
 
-    /* 文章页里，右栏收起（或窄屏把右栏合并进左栏）时搬过来的那批卡片一律不显示：
-       阅读时左栏只需要 简介 / 本文分类标签 / 目录，不需要 分类·归档·标签·日历·最新文章
-       再跟一遍。这些卡片带 data-sb-moved（sidebar-toggle.js 搬的）
+    /* 左栏有目录（文章页）时，右栏收起（或窄屏把右栏合并进左栏）搬过来的那批卡片
+       一律不显示：阅读时左栏只需要 简介 / 本文分类标签 / 目录，
+       不需要 分类·归档·标签·日历·最新文章 再跟一遍。
+       这些卡片带 data-sb-moved（sidebar-toggle.js 搬的）
        或放在 .column-right-shadow（主题自带的影子副本）里 */
-    body.is-post-page .column-left > [data-sb-moved],
+    body.sb-has-toc .column-left > [data-sb-moved],
     body.is-post-page .column-left > .column-right-shadow {
         display: none !important;
     }
@@ -204,12 +207,12 @@ body .widget[data-type="github_calendar"] {
     }
 }
 
-/* ── 宽屏（三栏，Bulma widescreen ≥1214px）──────────────
+/* ── 宽屏（三栏，主题真正显示右栏的宽度 ≥1279px，实测 1278 隐藏 / 1279 出现）──────────
    左栏尾部那份「右栏影子副本」和搬移残留必须是隐藏的：
    主题只在窄屏把右栏合并进左栏时才显示它们，
    一旦露出来同一张卡片就会在左右两栏各出现一次。
    display:none 的 !important 是为压过 Bulma 的 is-hidden-* 工具类，别删 */
-@media screen and (min-width: 1214px) and (min-aspect-ratio: 3/4) {
+@media screen and (min-width: 1279px) and (min-aspect-ratio: 3/4) {
     body.col-scroll .column-left > .column-right-shadow,
     body.col-scroll:not(.sb-right-hidden) .column-left > [data-sb-moved] {
         display: none !important;
