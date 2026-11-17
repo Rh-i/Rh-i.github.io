@@ -107,6 +107,15 @@ body .widget[data-type="github_calendar"] {
         overflow: visible;
     }
 
+    /* 文章页里，右栏收起（或窄屏把右栏合并进左栏）时搬过来的那批卡片一律不显示：
+       阅读时左栏只需要 简介 / 本文分类标签 / 目录，不需要 分类·归档·标签·日历·最新文章
+       再跟一遍。这些卡片带 data-sb-moved（sidebar-toggle.js 搬的）
+       或放在 .column-right-shadow（主题自带的影子副本）里 */
+    body.is-post-page .column-left > [data-sb-moved],
+    body.is-post-page .column-left > .column-right-shadow {
+        display: none !important;
+    }
+
     /* 卡片级吸顶：top = 顶栏下沿 + 栏内留白（首卡与正文卡片同一条线）。
        标记值带上了所属栏（left / right）：侧栏折叠时 sidebar-toggle.js 会把右栏
        卡片搬到左栏，如果只写 [data-sticky]，搬过去的卡片还会吸顶，
