@@ -514,7 +514,7 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .card-content {
 /* 侧栏固定宽度、剩余空间全给正文。
    断点写 769 而不是 768：Bulma 在 768px 还算「手机档」，.columns 仍是 block（上下堆叠），
    768 上把左栏压成 240px 会得到一个又窄又靠左的孤零零卡片列 */
-@media screen and (min-width: 769px) {
+@media screen and (min-width: 768px) and (min-aspect-ratio: 3/4) {
     body:is(.is-2-column, .is-3-column) .column-left,
     body.is-3-column .column-right {
         flex: 0 0 var(--site-side);

@@ -108,7 +108,7 @@ body .widget[data-type="github_calendar"] {
    注意不要在这里写 display：主题靠 is-hidden-touch / is-hidden-desktop-only
    在窄窗口隐藏右栏，一旦被强制 display 打开，就会出现
    「右栏 + 左栏里的影子副本」两份同样的卡片 */
-@media screen and (min-width: 769px) {
+@media screen and (min-width: 768px) and (min-aspect-ratio: 3/4) {
     body.col-scroll .column-left,
     body.col-scroll .column-right {
         position: static;
@@ -166,7 +166,7 @@ body .widget[data-type="github_calendar"] {
 /* ── 栏目页：整栏吸顶不动 ────────────────────────────────
    栏自己带 10.5px 内边距，所以 top 直接取 --site-top；
    加 --site-card-pad 的话首卡会比正文低 10.5px（踩过一次） */
-@media screen and (min-width: 769px) {
+@media screen and (min-width: 768px) and (min-aspect-ratio: 3/4) {
     body.col-scroll .column-left[data-sticky-col],
     body.col-scroll .column-right[data-sticky-col] {
         position: sticky;
@@ -177,12 +177,6 @@ body .widget[data-type="github_calendar"] {
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-width: none;
-        /* 万一样内还是被接管滚动了，让卡片整张对齐，不会“抖” */
-        scroll-snap-type: y proximity;
-    }
-
-    body.col-scroll [data-sticky-col] > .widget {
-        scroll-snap-align: start;
     }
 
     /* 滚动条默认隐形，鼠标移上去才露出来（不挡视线，又能看出还能滚） */
@@ -215,7 +209,7 @@ body .widget[data-type="github_calendar"] {
    主题只在窄屏把右栏合并进左栏时才显示它们，
    一旦露出来同一张卡片就会在左右两栏各出现一次。
    display:none 的 !important 是为压过 Bulma 的 is-hidden-* 工具类，别删 */
-@media screen and (min-width: 1214px) {
+@media screen and (min-width: 1214px) and (min-aspect-ratio: 3/4) {
     body.col-scroll .column-left > .column-right-shadow,
     body.col-scroll:not(.sb-right-hidden) .column-left > [data-sb-moved] {
         display: none !important;

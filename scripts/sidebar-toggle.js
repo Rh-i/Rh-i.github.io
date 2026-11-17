@@ -62,13 +62,13 @@ body.sb-right-hidden .column-right {
    也是它（#toc.is-active + #toc-mask）。祖先一旦 display:none，
    浮层永远出不来，表现为「点了没反应、页面只剩遮罩」。
    所以：≥768 整列藏掉（那里没有目录按钮）；<768 只藏卡片，列留着。 */
-@media screen and (min-width: 768px) {
+@media screen and (min-width: 768px) and (min-aspect-ratio: 3/4) {
     body.sb-left-hidden .column-left {
         display: none !important;
     }
 }
 
-@media screen and (max-width: 767px) {
+@media screen and (max-width: 767px), screen and (max-aspect-ratio: 3/4) {
     body.sb-left-hidden .column-left > :not([data-type="toc"]) {
         display: none !important;
     }
@@ -94,7 +94,7 @@ body.sb-right-hidden .column-main {
 /* 只有 768px 以上才给贴边按钮。
    手机宽度下左栏就是页面顶部的卡片区，贴边按钮盖在正文上、效果还在页面最上面，
    看起来和实际作用对不上，所以改成底部那颗胶囊（见 .sb-toggle-bottom） */
-@media screen and (min-width: 768px) {
+@media screen and (min-width: 768px) and (min-aspect-ratio: 3/4) {
     .sb-toggle.is-visible {
         display: flex;
     }
@@ -151,7 +151,7 @@ body.sb-left-hidden .sb-toggle-bottom-arrow {
     transform: rotate(180deg);
 }
 
-@media screen and (max-width: 767px) {
+@media screen and (max-width: 767px), screen and (max-aspect-ratio: 3/4) {
     .sb-toggle-bottom.is-visible {
         display: flex;
     }
@@ -234,6 +234,17 @@ const script = `<script id="site-sidebar-toggle">
     // 搬进左栏的那组卡片是否收起（'0' = 收起，其余 = 展开）
     var FOLDED = 'blog.sidebar.rightFolded';
 
+    /* ── 断点口径（全站唯一来源）────────────────────────
+       窄/纵向（手机式布局）：宽度不够，或者窗口是竖的（纵横比 ≤ 3:4）。
+       竖屏窗口即使是桌面宽度（例如 900×1600、1440×2400），主题也会把右栏藏掉，
+       所以这里必须和样式里的媒体查询写成同一对条件，否则 JS 和 CSS 会各说各话：
+       例如 900×1600 时 CSS 已按手机处理、JS 却以为自己是桌面，
+       就会出现「右栏卡片既没显示也没搬过来」「展开右栏按钮点了没反应」这类 bug。
+       改这里时，务必同步 scripts/custom-style.js、scripts/layout.js 里的同名媒体查询 */
+    var NARROW = '(max-width: 767px), (max-aspect-ratio: 3/4)';
+    /* 右栏真正能出现的条件：widescreen 宽度 且 不是竖屏 */
+    var WIDE = '(min-width: 1214px) and (min-aspect-ratio: 3/4)';
+
     function read(key) {
         try {
             return window.localStorage.getItem(key);
@@ -269,7 +280,15 @@ const script = `<script id="site-sidebar-toggle">
     // 手机宽度：侧栏是堆在正文上方的卡片，没有“收起”这个概念。
     // 断点必须和 CSS 里的「贴边按钮 ≥768」成对，也和主题「目录」按钮出现的宽度一致
     function isNarrow() {
-        return window.matchMedia('(max-width: 767px)').matches;
+        return window.matchMedia(NARROW).matches;
+    }
+
+    // 右栏能不能出现：主题用 is-hidden-touch / is-hidden-desktop-only 把它
+    // 在 <1214（非 widescreen）的宽度下直接 display:none 了。
+    // 这个区间里再给一个「展开右侧栏」按钮就是个死按钮（点完什么也不会变），
+    // 所以按钮只在右栏真的能显示时才露出来
+    function canShowRight() {
+        return window.matchMedia(WIDE).matches;
     }
 
     // 右栏是不是"当前看不到"：要么手动收起了，要么被主题的响应式规则 display:none 了
@@ -421,7 +440,8 @@ const script = `<script id="site-sidebar-toggle">
             leftBtn.classList.toggle('is-visible', !!left);
         }
         if (rightBtn) {
-            rightBtn.classList.toggle('is-visible', !isNarrow() && (visible(right) || isHidden(RIGHT)));
+            rightBtn.classList.toggle('is-visible',
+                canShowRight() && !isNarrow() && (visible(right) || isHidden(RIGHT)));
         }
         var bottomBtn = document.getElementById('sb-toggle-bottom');
         if (bottomBtn) {
