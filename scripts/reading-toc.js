@@ -60,10 +60,12 @@ body:not(.is-post-page) .widget[data-type="recent-posts"] {
 @media screen and (min-width: 769px) {
     /* ── 三栏都回到正常文档流，跟着整页一起滚 ──────────────
        高度交给 flex 拉伸（和正文一样长），不要固定成 100vh：
-       只有这样，左右栏最后那张卡片才能在文章任意位置继续吸住 */
+       只有这样，左右栏最后那张卡片才能在文章任意位置继续吸住。
+       注意不要在这里写 display：主题靠 is-hidden-touch / is-hidden-desktop-only
+       在窄窗口隐藏右栏，一旦被强制 display 打开，就会出现
+       「右栏 + 左栏里的影子副本」两份同样的卡片 */
     body.col-scroll .column-left,
     body.col-scroll .column-right {
-        display: block !important;
         position: static;
         align-self: stretch;
         height: auto;
@@ -142,6 +144,16 @@ body:not(.is-post-page) .widget[data-type="recent-posts"] {
         height: auto;
         max-height: none;
         overflow: visible;
+    }
+}
+
+/* 宽屏（三栏）时，左栏尾部那份「右栏影子副本」和搬移残留都必须是隐藏的。
+   主题只在窄屏把右栏合并进左栏时才会显示它们；一旦它们露出来，
+   同一个卡片就会在左右两栏各出现一次 */
+@media screen and (min-width: 1214px) {
+    body.col-scroll .column-left > .column-right-shadow,
+    body.col-scroll:not(.sb-right-hidden) .column-left > [data-sb-moved] {
+        display: none !important;
     }
 }
 </style>`;
