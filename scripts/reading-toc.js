@@ -80,6 +80,53 @@ body:not(.is-post-page) .widget[data-type="recent-posts"] {
         top: calc(6.5rem + .75rem);
     }
 
+    /* ── 栏目页（主页 / 搜索 / 归档 / 分类 / 标签 / 关于）─────────
+       这些页面没有会展开收起的侧栏内容，左右卡片没必要跟着页面走：
+       整栏钉在视口里不动，中间列表照常滚。
+       一屏装不下（矮屏）时在栏内自己滚 —— 卡片一张不丢，
+       滚动条默认隐形，鼠标移上去才露出来 */
+    body.col-scroll:not(.is-post-page) .column-left,
+    body.col-scroll:not(.is-post-page) .column-right {
+        position: sticky;
+        top: calc(6.5rem + .75rem);
+        align-self: start;
+        max-height: calc(100vh - 9rem);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+    }
+
+    body.col-scroll:not(.is-post-page) .column-left:hover,
+    body.col-scroll:not(.is-post-page) .column-right:hover {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(128, 128, 128, .45) transparent;
+    }
+
+    body.col-scroll:not(.is-post-page) .column-left::-webkit-scrollbar,
+    body.col-scroll:not(.is-post-page) .column-right::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+    }
+
+    body.col-scroll:not(.is-post-page) .column-left:hover::-webkit-scrollbar,
+    body.col-scroll:not(.is-post-page) .column-right:hover::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    body.col-scroll:not(.is-post-page) .column-left:hover::-webkit-scrollbar-thumb,
+    body.col-scroll:not(.is-post-page) .column-right:hover::-webkit-scrollbar-thumb {
+        background: rgba(128, 128, 128, .45);
+        border-radius: 3px;
+    }
+
+    /* 栏目页里整栏已经在滚了，里面的目录卡片不用再自己吸顶 / 再套一层滚动 */
+    body.col-scroll:not(.is-post-page) .column-left > .widget[data-type="toc"],
+    body.col-scroll:not(.is-post-page) .column-left > .widget[data-type="toc"] > .card-content {
+        position: static;
+        max-height: none;
+        overflow: visible;
+    }
+
     /* 目录内容限高：目录短时这条不起作用（没滚动条）；
        目录比一屏高时才生效，卡片内自己滚，保证整份都能看完 */
     body.col-scroll .column-left > .widget[data-type="toc"] > .card-content {
