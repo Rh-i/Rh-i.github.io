@@ -51,6 +51,16 @@ body .column-left > .widget[data-type="toc"] > .toc-tools {
     pointer-events: none;
 }
 
+/* 主题自带的另一条进度条：default.styl 里用 CSS 滚动时间轴画的
+   body:has(.card-content.article h1.title)::after，它跟的是 scroll(root)。
+   本站正文列自己滚、整页不滚，这个时间轴永远不激活，动画就不生效，
+   于是它一直是一条 100% 宽的满格蓝线（只在文章页出现）。
+   必须掐掉，否则它会盖住/冒充我们自己画的那条 */
+body::after,
+body:has(.card-content.article h1.title)::after {
+    display: none !important;
+}
+
 /* 折叠右栏后搬过来的卡片中间那条「更多」隔断：新的三栏布局里卡片高度由脚本
    撑满 / 裁剪，这条隔断既拉不高也收不起，在窄窗口里只会被拉成一根长条，所以不显示 */
 body.col-scroll .column-left > .sb-split {
@@ -309,7 +319,7 @@ const script = `<script id="site-reading-toc-script">
 
     /* 版本标记：写在进度条元素的 data-build 上。
        浏览器缓存了旧版页面时一眼就能看出来跑的是哪一版 */
-    var BUILD = 'bar-5';
+    var BUILD = 'bar-6';
 
     function cache() {
         el.main = document.querySelector('.column-main');
