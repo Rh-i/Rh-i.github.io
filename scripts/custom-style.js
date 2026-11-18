@@ -512,9 +512,12 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .card-content {
 }
 
 /* 侧栏固定宽度、剩余空间全给正文。
-   断点写 769 而不是 768：Bulma 在 768px 还算「手机档」，.columns 仍是 block（上下堆叠），
-   768 上把左栏压成 240px 会得到一个又窄又靠左的孤零零卡片列 */
-@media screen and (min-width: 768px) and (min-aspect-ratio: 3/4) {
+   用 769 而不是 768，纵溠比也不参与判断：这两个数字都要和 Bulma 的
+   tablet 断点（769）对齐。判的是「柱栅栏已经变侧栏了」，不是猜。
+   之前写「≥768 且 ≥3:4」，导致 768px 时 CSS 以为自己是桌面、
+   实际佈局还是上下堆叠；竖屏平板（820×1180、900×1600）反过来 –
+   明明左栏已在侧边，却被当成手机档，目录也就贴不住。 */
+@media screen and (min-width: 769px) {
     body:is(.is-2-column, .is-3-column) .column-left,
     body.is-3-column .column-right {
         flex: 0 0 var(--site-side);
@@ -541,11 +544,11 @@ body:is(.is-1-column, .is-2-column, .is-3-column) .column-main .card-content {
     }
 }
 
-/* 手机：≤767px 或 ≤3:4（含 9:19.5 / 9:20 / 9:21 全面屏）
-   同时写 max-width 是为了兜底：Safari 14 及更早不支持 aspect-ratio 媒体查询，
-   只写宽高比的话这些设备会拿到桌面档的侧栏。
-   右侧 widget（分类 / 最新 / 归档 / 标签 / 日历）整体隐藏，只留正文 */
-@media screen and (max-width: 767px), screen and (max-aspect-ratio: 3/4) {
+/* 手机：≤768px（Bulma 的 tablet 从 769 开始），完全按宽度来。
+   之前还叠了「≤3:4」，于是竖屏平板（820×1180）明明有侧栏却被当手机，
+   会出现「侧栏在旁边却只能点底部胶囊」。现在右栏要不要隐，交给主题的
+   is-hidden-* 说了算，这里只兜底手机档 */
+@media screen and (max-width: 768px) {
     body.is-3-column .column-right {
         display: none;
     }

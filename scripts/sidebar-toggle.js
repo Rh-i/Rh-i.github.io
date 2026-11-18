@@ -58,20 +58,17 @@ body.sb-right-hidden .column-right {
 }
 
 /* 收起左栏 —— 不能简单地给 .column-left 加 display:none：
-   目录卡片（#toc）就住在左栏里，手机宽度下主题把「目录」按钮点开的浮层
+   目录卡片（#toc）就住在左栏里，堆叠形态下主题把「目录」按钮点开的浮层
    也是它（#toc.is-active + #toc-mask）。祖先一旦 display:none，
    浮层永远出不来，表现为「点了没反应、页面只剩遮罩」。
-   所以：≥768 整列藏掉（那里没有目录按钮）；<768 只藏卡片，列留着。 */
-@media screen and (min-width: 768px) and (min-aspect-ratio: 3/4) {
-    body.sb-left-hidden .column-left {
-        display: none !important;
-    }
+   所以：侧栏形态整列藏掉；堆叠形态只藏卡片，列留着。
+   这两个形态由 JS 按真实几何打到 body 上（sb-side / sb-stack），不再用媒体查询猜 */
+body.sb-side.sb-left-hidden .column-left {
+    display: none !important;
 }
 
-@media screen and (max-width: 767px), screen and (max-aspect-ratio: 3/4) {
-    body.sb-left-hidden .column-left > :not([data-type="toc"]) {
-        display: none !important;
-    }
+body.sb-stack.sb-left-hidden .column-left > :not([data-type="toc"]) {
+    display: none !important;
 }
 
 /* 主题为了左右栏等高，会在左栏尾部放一份右栏的"影子副本"（.column-right-shadow）。
@@ -91,13 +88,13 @@ body.sb-right-hidden .column-main {
     max-width: none;
 }
 
-/* 只有 768px 以上才给贴边按钮。
-   手机宽度下左栏就是页面顶部的卡片区，贴边按钮盖在正文上、效果还在页面最上面，
-   看起来和实际作用对不上，所以改成底部那颗胶囊（见 .sb-toggle-bottom） */
-@media screen and (min-width: 768px) and (min-aspect-ratio: 3/4) {
-    .sb-toggle.is-visible {
-        display: flex;
-    }
+/* 贴边按钮只在「侧栏形态」出现：卡片在正文左边时，用左右两条边的按钮。
+   卡片堆在正文上/下时（体感就是手机单栏）改用底部胶囊，见 .sb-toggle-bottom。
+   形态由 JS 按真实几何判断（body.sb-side / body.sb-stack）：
+   之前用「≥768 且 ≥3:4」猜，768px 时猜成桌面但布局还是堆叠，
+   结果贴边按钮跟底部胶囊两个一起出现；竖屏平板又反过来只给胶囊 */
+body.sb-side .sb-toggle.is-visible {
+    display: flex;
 }
 
 /* 手机底部那颗「介绍卡片」胶囊：收起/展开整块卡片区。
@@ -145,16 +142,20 @@ body.sb-left-hidden .sb-toggle-bottom {
     display: inline-block;
     font-size: .75rem;
 }
-}
 
 body.sb-left-hidden .sb-toggle-bottom-arrow {
     transform: rotate(180deg);
 }
 
-@media screen and (max-width: 767px), screen and (max-aspect-ratio: 3/4) {
-    .sb-toggle-bottom.is-visible {
-        display: flex;
-    }
+/* 胶囊只给「堆叠形态」：卡片在正文上/下，贴边按钮盖正文、位置也对不上 */
+body.sb-stack .sb-toggle-bottom.is-visible {
+    display: flex;
+}
+
+/* 堆叠形态下胶囊贴着视口底部固定，滚到左栏末尾会盖住「更多」：
+   给左栏留出一块让位，两者就不会叠在一起 */
+body.sb-stack .column-left {
+    padding-bottom: 4.25rem;
 }
 
 /* 右侧卡片搬进左栏时，用它和"本来就在左边"的卡片隔开。
@@ -234,18 +235,36 @@ const script = `<script id="site-sidebar-toggle">
     // 搬进左栏的那组卡片是否收起（'0' = 收起，其余 = 展开）
     var FOLDED = 'blog.sidebar.rightFolded';
 
-    /* ── 断点口径（全站唯一来源）────────────────────────
-       窄/纵向（手机式布局）：宽度不够，或者窗口是竖的（纵横比 ≤ 3:4）。
-       竖屏窗口即使是桌面宽度（例如 900×1600、1440×2400），主题也会把右栏藏掉，
-       所以这里必须和样式里的媒体查询写成同一对条件，否则 JS 和 CSS 会各说各话：
-       例如 900×1600 时 CSS 已按手机处理、JS 却以为自己是桌面，
-       就会出现「右栏卡片既没显示也没搬过来」「展开右栏按钮点了没反应」这类 bug。
-       改这里时，务必同步 scripts/custom-style.js、scripts/layout.js 里的同名媒体查询 */
-    var NARROW = '(max-width: 767px), (max-aspect-ratio: 3/4)';
-    /* 右栏真正能出现的条件：≥1279 且不是竖屏。
-       1279 是主题自己的断点（实测 1278 仍是 display:none、1279 才 display:block），
-       这里少一像素就会出现「右栏根本出不来、却摆了个能展开它的按钮」的死按钮 */
-    var WIDE = '(min-width: 1279px) and (min-aspect-ratio: 3/4)';
+    /* ── 布局形态：不猜断点，直接量 ──────────────────
+       左栏右边缘在正文左边缘左侧 → 侧栏形态（用两侧贴边按钮）
+       否则（左栏堆在正文上/下）      → 堆叠形态（用底部胶囊）
+       之前用「宽度 + 纵溠比」两套条件去猜，经常和 Bulma 的实际佈局对不上：
+       768px 时猜成桌面但佈局仍是堆叠（贴边按钮 + 胶囊一起出现），
+       820×1180 这种竖屏平板明明左栏在侧边，却又只给胶囊。
+       直接量几何就不会有这种错位，主题以后改断点也不影响 */
+    function layoutMode() {
+        var left = document.querySelector('.column-left');
+        var main = document.querySelector('.column-main');
+        if (!left || !main) {
+            return 'stack';
+        }
+        return left.getBoundingClientRect().right <= main.getBoundingClientRect().left + 1
+            ? 'side'
+            : 'stack';
+    }
+
+    /* 把形态写到 body 上，样式侧全靠这两个 class 开关按钮，
+       不再写一套媒体查询去猜 */
+    function syncMode() {
+        var side = layoutMode() === 'side';
+        document.body.classList.toggle('sb-side', side);
+        document.body.classList.toggle('sb-stack', !side);
+        return side;
+    }
+
+    /* 右栏能不能出现：只看主题自己的断点（实测 1278 display:none、1279 display:block）。
+       少一像素就会出现「右栏根本出不来、却摆了个能展开它的按钮」的死按钮 */
+    var WIDE = '(min-width: 1279px)';
 
     function read(key) {
         try {
@@ -279,11 +298,6 @@ const script = `<script id="site-sidebar-toggle">
         return !!el && el.offsetWidth > 0;
     }
 
-    // 手机宽度：侧栏是堆在正文上方的卡片，没有“收起”这个概念。
-    // 断点必须和 CSS 里的「贴边按钮 ≥768」成对，也和主题「目录」按钮出现的宽度一致
-    function isNarrow() {
-        return window.matchMedia(NARROW).matches;
-    }
 
     // 右栏能不能出现：主题用 is-hidden-touch / is-hidden-desktop-only 把它
     // 在 <1279（非 widescreen）的宽度下直接 display:none 了。
@@ -443,19 +457,22 @@ const script = `<script id="site-sidebar-toggle">
         var right = document.querySelector('.column-right');
         var leftBtn = document.getElementById('sb-toggle-left');
         var rightBtn = document.getElementById('sb-toggle-right');
+        // 形态每次都要重新量：侧栏 ↔ 堆叠的翻转直接影响用哪套按钮
+        var side = syncMode();
         // 侧栏被隐藏时要靠按钮找回来，因此判断的是"页面上有没有这一栏"，
         // 而不是它现在是否可见
         if (leftBtn) {
-            leftBtn.classList.toggle('is-visible', !!left);
+            // 侧栏形态：卡片在正文左边 → 左边缘的 <；堆叠形态改用底部胶囊
+            leftBtn.classList.toggle('is-visible', side && !!left);
         }
         if (rightBtn) {
             rightBtn.classList.toggle('is-visible',
-                canShowRight() && !isNarrow() && (visible(right) || isHidden(RIGHT)));
+                side && canShowRight() && (visible(right) || isHidden(RIGHT)));
         }
         var bottomBtn = document.getElementById('sb-toggle-bottom');
         if (bottomBtn) {
-            // 手机上才有意义：宽屏用左右贴边按钮
-            bottomBtn.classList.toggle('is-visible', isNarrow() && !!left);
+            // 堆叠形态（卡片在正文上/下）才用胶囊；两个按钮永远互斥
+            bottomBtn.classList.toggle('is-visible', !side && !!left);
         }
     }
 

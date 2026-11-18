@@ -94,13 +94,11 @@ body .widget[data-type="github_calendar"] {
     min-height: 190px;
 }
 
-/* ── 公共：三栏回到正常文档流（≥769px 才有侧栏）──────────────
-   高度交给 flex 拉伸（和正文一样长），不要固定成 100vh：
-   只有这样，柱子里最后那张卡片才能在文章任意位置继续吸住。
-   注意不要在这里写 display：主题靠 is-hidden-touch / is-hidden-desktop-only
-   在窄窗口隐藏右栏，一旦被强制 display 打开，就会出现
-   「右栏 + 左栏里的影子副本」两份同样的卡片 */
-@media screen and (min-width: 768px) and (min-aspect-ratio: 3/4) {
+/* ── 桌面档（有独立侧栏）：与 Bulma 的 tablet 断点一致 ────────
+   只写宽度 769，不再叠 min-aspect-ratio：
+   竖屏平板（820×1180、900×1600）左栏明明在侧边，却因为纵溠比被排在这层之外，
+   结果是目录卡片 position 退回 relative，滚下去就跟着正文一起滚走了 */
+@media screen and (min-width: 769px) {
     body.col-scroll .column-left,
     body.col-scroll .column-right {
         position: static;
@@ -191,7 +189,7 @@ body .widget[data-type="github_calendar"] {
 /* ── 栏目页：整栏吸顶不动 ────────────────────────────────
    栏自己带 10.5px 内边距，所以 top 直接取 --site-top；
    加 --site-card-pad 的话首卡会比正文低 10.5px（踩过一次） */
-@media screen and (min-width: 768px) and (min-aspect-ratio: 3/4) {
+@media screen and (min-width: 769px) {
     body.col-scroll .column-left[data-sticky-col],
     body.col-scroll .column-right[data-sticky-col] {
         position: sticky;
@@ -235,12 +233,13 @@ body .widget[data-type="github_calendar"] {
     }
 }
 
-/* ── 宽屏（三栏，主题真正显示右栏的宽度 ≥1279px，实测 1278 隐藏 / 1279 出现）──────────
+/* ── 宽屏（主题真正显示右栏的宽度 ≥1279px，实测 1278 隐藏 / 1279 出现）──
    左栏尾部那份「右栏影子副本」和搬移残留必须是隐藏的：
-   主题只在窄屏把右栏合并进左栏时才显示它们，
-   一旦露出来同一张卡片就会在左右两栏各出现一次。
+   它只是主题给容器等高用的残本，与真正的右栏同时显现就会重复。
+   只写宽度，不叠纵溠比：竖屏宽屏（1440×2400）主题依旧会显示右栏，
+   我们这边不跟的话，右边一栏卡片会在左栏里再出现一份。
    display:none 的 !important 是为压过 Bulma 的 is-hidden-* 工具类，别删 */
-@media screen and (min-width: 1279px) and (min-aspect-ratio: 3/4) {
+@media screen and (min-width: 1279px) {
     body.col-scroll .column-left > .column-right-shadow,
     body.col-scroll:not(.sb-right-hidden) .column-left > [data-sb-moved] {
         display: none !important;
